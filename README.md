@@ -10,7 +10,7 @@ students to:
 
 Internally, the program store the list of registered courses (by students) and their schedules in 3 text files: *course_schedule.txt*, *student_registration.txt*, *user_account.txt*
 
-RUN INSTRUCTION:
+**RUN INSTRUCTION:**
 ```bash
 gcc -o main main.c users/user.c courses/courses.c registrations/registration.c
 ./main

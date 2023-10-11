@@ -4,9 +4,12 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include "enums.h"
 
 #define MAXLINE 4096   /*max text line length*/
-#define SERVER_PORT 3000
+#define SERVER_PORT 3001
+
+int sockfd;
 
 // Function to create a socket and connect to the server
 int connectToServer(const char *server_address) {
@@ -23,8 +26,8 @@ int connectToServer(const char *server_address) {
     // Configure the server address
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(SERVER_PORT);
     servaddr.sin_addr.s_addr = inet_addr(server_address);
+    servaddr.sin_port = htons(SERVER_PORT);
 
     // Connect to the server
     if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
@@ -35,27 +38,122 @@ int connectToServer(const char *server_address) {
     return sockfd;
 }
 
-// Function to send a request to the server
-void sendRequest(int sockfd, const char *request) {
-    // Send the request to the server
-    if (send(sockfd, request, strlen(request), 0) < 0) {
-        perror("Send failed");
-        exit(1);
+int login(char (*studentID)[])
+{
+    char sendline[MAXLINE], recvline[MAXLINE];
+    char username[20], pwd[20];
+
+    printf("Enter you username (studentID): \n");
+    scanf("%s", username);
+    printf("Enter you password: \n");
+    scanf("%s", pwd);
+    
+    // store values in sendline
+    sprintf(sendline, "%d %s %s", LOGIN, username, pwd);
+    send (sockfd, sendline, strlen(sendline), 0);
+    // eg.: 1 linhnt 123
+
+    int auth = recv(sockfd, recvline, MAXLINE, 0);
+    if (auth == SUCCESS)
+    {
+        printf("Login successfully!\n");
+        strcpy(*studentID, username);
+        return 1; // success
+    }
+    else if (auth == FAIL)
+    {
+        printf("Invalid username or password!!!\n");
+        return 0; // fail
+    } else if (auth == 0) {
+        perror("The server terminated prematurely");
+        exit(4);
     }
 }
 
-// Function to receive a response from the server
-void receiveResponse(int sockfd, char *response, int max_response_size) {
-    // Receive the response from the server
-    int bytes_received = recv(sockfd, response, max_response_size - 1, 0);
-    if (bytes_received < 0) {
-        perror("Receive failed");
-        exit(1);
+void viewSchedule (char studentID[]) {
+    char weekday[20];
+    char sendline[MAXLINE], recvline[MAXLINE];
+
+    printf("Enter the weekday (e.g., Monday, Tuesday) or type ALL to view week schedule: ");
+    scanf("%s", weekday);
+    getchar();
+    if (!strcmp(weekday, "Monday") || !strcmp(weekday, "Tuesday") || !strcmp(weekday, "Wednesday") || !strcmp(weekday, "Thursday") || !strcmp(weekday, "Friday")) {
+        sprintf(sendline, "%d %s", VIEWWEEKDAYSCHEDULE, weekday);
+        // eg.: 2 Tuesday
+        send (sockfd, sendline, strlen(sendline), 0);
     }
-    printf("%s", "String received from the server: ");
-    fputs(response, stdout);
-    response[bytes_received] = '\0'; // Null-terminate the received data
+    else if (strcmp(weekday, "ALL")==0) {
+        sprintf(sendline, "%d %s", VIEWWEEKSCHEDULE, weekday);
+        /// eg.: 3 ALL
+        send (sockfd, sendline, strlen(sendline), 0);
+    }
+    else {
+        printf ("Invalid weekday!!!\n\n");
+        return;
+    }
+    while (recv(sockfd, recvline, MAXLINE, 0) > 0) {
+        fputs(recvline, stdout);
+    }
 }
+
+void displayMenu() {
+    for (;;) {
+        int loggedIn = 1;
+        char studentID[20];
+        while (1) {
+            if (!loggedIn) {
+                printf("====================================\n");
+                printf("Welcome to Study Schedule Management\n");
+                printf("1. Login\n");
+                printf("2. Exit\n");
+                printf("Enter your choice: ");
+
+                int choice;
+                scanf("%d", &choice);
+                getchar();
+
+                if (choice == 1) {
+                    loggedIn = login(&studentID);
+                }
+                else if (choice == 2) {
+                    printf("Goodbye!\n");
+                    break;
+                } 
+                else {
+                    printf("Invalid choice. Try again.\n\n");
+                }
+            }
+            else {
+                printf("----------------------------------\n");
+                printf("Logged in as Student ID: %s\n", studentID);
+                printf("1. View Schedule\n");
+                printf("2. Logout\n");
+                printf("Enter your choice: ");
+
+                int choice;
+                scanf("%d", &choice);
+                getchar();
+                if (choice == 1)
+                {
+                    viewSchedule(studentID);
+                }
+                else if (choice == 2)
+                {
+                    loggedIn = 0;
+                    close(sockfd);
+                    printf("Logged out successfully.\n\n");
+                    exit(0);
+                }
+                else
+                {
+                    printf("Invalid choice. Try again.\n");
+                }
+            }
+        }
+    }
+}
+
+
 
 int main(int argc, char **argv) {
     if (argc != 2) {
@@ -64,28 +162,9 @@ int main(int argc, char **argv) {
     }
 
     const char *server_address = argv[1];
-    int sockfd;
-    char sendline[MAXLINE], recvline[MAXLINE];
-
-    // Connect to the server using the provided server address
     sockfd = connectToServer(server_address);
 
-    // Rest of the code remains the same as in the previous example
-    sendRequest(sockfd, "Nguyen Thi Linh 20200349");
-    while (fgets(sendline, MAXLINE, stdin) != NULL)
-    {
-
-        send(sockfd, sendline, strlen(sendline), 0);
-
-        if (recv(sockfd, recvline, MAXLINE, 0) == 0)
-        {
-            // error: server terminated prematurely
-            perror("The server terminated prematurely");
-            exit(4);
-        }
-        printf("%s", "String received from the server: ");
-        fputs(recvline, stdout);
-    }
+    displayMenu();
 
     return 0;
 }

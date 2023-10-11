@@ -53,18 +53,18 @@ int login(char (*studentID)[])
     send (sockfd, sendline, strlen(sendline), 0);
     // eg.: 1 linhnt 123
 
-    int auth = recv(sockfd, recvline, MAXLINE, 0);
-    if (auth == SUCCESS)
-    {
+    recv(sockfd, recvline, MAXLINE, 0);
+    int auth = recvline[0] - '0';
+    if (auth == 1){
         printf("Login successfully!\n");
         strcpy(*studentID, username);
         return 1; // success
     }
-    else if (auth == FAIL)
+    else if (auth == 0)
     {
         printf("Invalid username or password!!!\n");
         return 0; // fail
-    } else if (auth == 0) {
+    } else {
         perror("The server terminated prematurely");
         exit(4);
     }
@@ -91,14 +91,15 @@ void viewSchedule (char studentID[]) {
         printf ("Invalid weekday!!!\n\n");
         return;
     }
-    while (recv(sockfd, recvline, MAXLINE, 0) > 0) {
+    int n;
+    while ((n = recv(sockfd, recvline, MAXLINE, 0)) > 0) {
         fputs(recvline, stdout);
     }
 }
 
 void displayMenu() {
     for (;;) {
-        int loggedIn = 1;
+        int loggedIn = 0;
         char studentID[20];
         while (1) {
             if (!loggedIn) {
@@ -133,19 +134,14 @@ void displayMenu() {
                 int choice;
                 scanf("%d", &choice);
                 getchar();
-                if (choice == 1)
-                {
+                if (choice == 1) {
                     viewSchedule(studentID);
-                }
-                else if (choice == 2)
-                {
+                } else if (choice == 2) {
                     loggedIn = 0;
                     close(sockfd);
                     printf("Logged out successfully.\n\n");
                     exit(0);
-                }
-                else
-                {
+                } else {
                     printf("Invalid choice. Try again.\n");
                 }
             }

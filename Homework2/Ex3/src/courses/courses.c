@@ -147,18 +147,20 @@ void displayCourseListByStudentIDAndWeekDay(struct RegistrationList *registratio
     initCourseList (&courseListByStudentID);
     getStudentRegistrationList(registrationList, studentID, &courseListByStudentID);
     getCourseListByCourseIDAndWeekDay (courseList, &courseListByStudentID, weekday);
+    FILE * fp = fopen ("timetable.txt", "w+");
     // display
-    printf("================================================================================================================\n");
-    printf("%-10s | %-25s | %-10s | %-12s | %-15s | %-30s | %-10s\n", "Code", "Course", "Week Day", "AM/PM", "Period", "Week", "Room");
-    printf("----------------------------------------------------------------------------------------------------------------\n");
+    fprintf(fp, "================================================================================================================\n");
+    fprintf(fp, "%-10s | %-25s | %-10s | %-12s | %-15s | %-30s | %-10s\n", "Code", "Course", "Week Day", "AM/PM", "Period", "Week", "Room");
+    fprintf(fp, "----------------------------------------------------------------------------------------------------------------\n");
     for (int i = 0; i < courseListByStudentID.size; i++) {
         struct Course course = courseListByStudentID.courses[i];
         if (strlen(course.code) && (strcmp(course.weekday, weekday) == 0)) {
-            printf("%-10s | %-25s | %-10s | %-12s | %-15s | %-30s | %-10s\n",
+            fprintf(fp, "%-10s | %-25s | %-10s | %-12s | %-15s | %-30s | %-10s\n",
                 course.code, course.name, course.weekday, course.timeOfDay, course.period, course.weeks, course.room);
         }
     }
-    printf("================================================================================================================\n");
+    fprintf(fp, "================================================================================================================\n");
+    fclose(fp);
     freeCourseList(&courseListByStudentID);
 }
 
@@ -182,40 +184,43 @@ void displayALLCoursesByStudentID(struct RegistrationList *registrationList, str
             for (int j=begin; j<=end; j++) {
                 strcpy(schedule[day][j], course.room);
             }
-            printf("%d\n", day);
          }
     }
+    FILE * fp = fopen ("timetable.txt", "w+");
     //Display the schedule 
-    printf("+============================================================+\n");
-    printf("|    | Monday   | Tuesday  | Wednesday | Thursday | Friday   |\n");
-    printf("|------------------------------------------------------------|\n");
+    fprintf(fp, "+============================================================+\n");
+    fprintf(fp, "|    | Monday   | Tuesday  | Wednesday | Thursday | Friday   |\n");
+    fprintf(fp, "|------------------------------------------------------------|\n");
     for (int t = 1; t <= 12; t++) {
-        printf("| %-3d|", t);
-        if (schedule[2][t]) printf(" %-8s |", schedule[2][t]); else printf("           |");
-        if (schedule[3][t]) printf(" %-8s |", schedule[3][t]); else printf("           |");
-        if (schedule[4][t]) printf(" %-9s |", schedule[4][t]); else printf("           |");
-        if (schedule[5][t]) printf(" %-8s |", schedule[5][t]); else printf("           |");
-        if (schedule[6][t]) printf(" %-8s |\n", schedule[6][t]); else printf("           |\n");
+        fprintf(fp, "| %-3d|", t);
+        if (schedule[2][t]) fprintf(fp, " %-8s |", schedule[2][t]); else fprintf(fp, "           |");
+        if (schedule[3][t]) fprintf(fp, " %-8s |", schedule[3][t]); else fprintf(fp, "           |");
+        if (schedule[4][t]) fprintf(fp, " %-9s |", schedule[4][t]); else fprintf(fp, "           |");
+        if (schedule[5][t]) fprintf(fp, " %-8s |", schedule[5][t]); else fprintf(fp, "           |");
+        if (schedule[6][t]) fprintf(fp, " %-8s |\n", schedule[6][t]); else fprintf(fp, "           |\n");
     }
-    printf("+============================================================+\n");
+    fprintf(fp, "+============================================================+\n");
+    fclose(fp);
     freeCourseList(&courseListByStudentID);
 }
 
 void displayCourseList(struct CourseList *courseList) {
-    printf("==================\n");
-    printf("Course List:\n");
-    printf("%-10s%-8s%-25s%-15s%-15s%-10s%-20s%-10s\n",
+    FILE *fp = fopen("course_list.txt", "w+");
+    fprintf(fp, "==================\n");
+    fprintf(fp, "Course List:\n");
+    fprintf(fp, "%-10s%-8s%-25s%-15s%-15s%-10s%-20s%-10s\n",
            "Course ID", "Code", "Name", "Weekday", "Time of Day", "Period", "Weeks", "Room");
-    printf("------------------------------------------------------------------------------\n");
+    fprintf(fp, "------------------------------------------------------------------------------\n");
 
     for (int i = 0; i < courseList->size; i++) {
         struct Course *course = &courseList->courses[i];
-        printf("%-10s%-8s%-25s%-15s%-15s%-10s%-20s%-10s\n",
+        fprintf(fp, "%-10s%-8s%-25s%-15s%-15s%-10s%-20s%-10s\n",
                course->courseID, course->code, course->name, course->weekday,
                course->timeOfDay, course->period, course->weeks, course->room);
     }
 
-    printf("==================\n");
+    fprintf(fp, "==================\n");
+    fclose(fp);
 }
 void freeCourseList(struct CourseList *courseList)
 {

@@ -36,5 +36,6 @@ main(int argc, char **argv)
     n = recvfrom(sockfd, recvline, MAXLINE, 0, (struct sockaddr *)&from_socket, &addrlen);
     recvline[n] = 0; // null terminate
     printf("From Server: %s:%d %s", inet_ntoa(from_socket.sin_addr), htons(from_socket.sin_port), recvline);
+    memset(sendline, '\0', (strlen(sendline) + 1));
   }
 }

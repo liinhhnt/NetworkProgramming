@@ -40,6 +40,7 @@ main()
 
         printf(mesg);
         sendto(sockfd, mesg, n, 0, (struct sockaddr *)&cliaddr, len);
+        memset(mesg, '\0', (strlen(mesg) + 1));
     }
     close(sockfd);
 }

@@ -44,7 +44,7 @@ main(int argc, char *argv[])
         return 0;
     }
 
-    // Waiting untill 2 clients connect
+    // Waiting until 2 clients connect
     int numOfClient = 0;
     len = sizeof(struct sockaddr);
     while (numOfClient < 2)

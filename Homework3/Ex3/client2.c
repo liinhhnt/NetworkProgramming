@@ -37,7 +37,7 @@ main(int argc, char **argv)
   servaddr.sin_port = htons(SERV_PORT);
   servaddr.sin_addr.s_addr = inet_addr(SERVER_IP);
 
-  // 2. Construct socker
+  // 2. Construct socket
   if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
   { /* Call socket() */
     perror("\nError: ");
@@ -48,13 +48,14 @@ main(int argc, char **argv)
   // 3. Join server
   while (1)
   {
-    sprintf(sendline, "hello, server");
+    sprintf(sendline, "hello, server"); // Hello server
     n = sendto(sockfd, sendline, strlen(sendline), 0, (struct sockaddr *)&servaddr, sizeof(servaddr));
     if (n < 0)
     {
       perror("\nError: ");
       continue;
     }
+    // wait for response from server
     n = recvfrom(sockfd, recvline, MAXLINE, 0, (struct sockaddr *)&from_socket, &addrlen);
     if (n < 0)
     {

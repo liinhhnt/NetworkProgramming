@@ -40,7 +40,7 @@ int main(int argc, char **argv)
         connfd = accept(listenfd, (struct sockaddr *)&cliaddr, &clilen);
         printf("%s\n", "Received request...");
 
-        char filename[MAXLINE] = "o.jpeg";
+        char filename[MAXLINE] = "o.txt";
 
         FILE *fo = fopen(filename, "w");
         if (fo == NULL)

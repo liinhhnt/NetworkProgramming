@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "enums.h"
 #include "users/user.h"
@@ -31,7 +32,6 @@ int login(char * studentID, char * username, char * password) {
 }
 
 void viewSchedule(char studentID[], char *weekday) {
-    printf("studentID: %s, weekday: %s\n", studentID, weekday);
     if (!strcmp(weekday, "Monday") || !strcmp(weekday, "Tuesday") || !strcmp(weekday, "Wednesday") || !strcmp(weekday, "Thursday") || !strcmp(weekday, "Friday")) {
         displayCourseListByStudentIDAndWeekDay(&registrationList, &courseList, studentID, weekday);
     }
@@ -62,6 +62,7 @@ int main(int argc, char **argv) {
     char buf[MAXLINE], sendline[MAXLINE];
     struct sockaddr_in cliaddr, servaddr;
     char studentID[20];
+    char END[10] = "End"; 
 
     // creation of the socket
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -105,32 +106,36 @@ int main(int argc, char **argv) {
                 result = sscanf(buf, "%c %s", &cmd, weekday);
                 if (result == 2) {
                     viewSchedule(studentID, weekday);
-                    FILE *file = fopen("timetable.txt", "r");
+                    FILE *file = fopen("timetable.txt", "r"); // file receives the timetable.      
                     while((n = fgets(sendline, MAXLINE, file)) != NULL) {
-                        send(connfd, sendline, n, 0);
+                        n = send(connfd, sendline, strlen(sendline), 0);
                     }
+                    fclose(file);
+                    usleep(500000);
+                    n = send(connfd, END, strlen(END), 0);
                 } else printf("Invalid weekday! %s\n", buf);
                 break;
             case '3':
                 result = sscanf(buf, "%c %s", &cmd, weekday);
                 if (result == 2) {
-                    viewSchedule("20191121", weekday);
-                    FILE *file = fopen("timetable.txt", "r");
+                    viewSchedule(studentID, weekday);
+                    FILE *file = fopen("timetable.txt", "r"); // file receives the timetable.      
                     while((n = fgets(sendline, MAXLINE, file)) != NULL) {
-                        send(connfd, sendline, n, 0);
-                    }
+                        n = send(connfd, sendline, strlen(sendline), 0);
+                    }   
+                    fclose(file);
+                    usleep(500000);
+                    n = send(connfd, END, strlen(END), 0);
                 } else printf("Invalid weekday! %s\n", buf);
                 break;
             default:
                 printf("Invalid command! %s\n", buf);
                 break;
             }
-            printf("%c\n", cmd);
             printf("%s", "String received from and resent to the client:");
             puts(buf);
             int i;
             for(i=0;i<MAXLINE;i++) buf[i] = '\0';
-            send(connfd, buf, n, 0);
         }
 
         if (n < 0)

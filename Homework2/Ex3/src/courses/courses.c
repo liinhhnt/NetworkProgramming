@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "courses.h"
 #include "../registrations/registration.h"
 
@@ -161,6 +162,7 @@ void displayCourseListByStudentIDAndWeekDay(struct RegistrationList *registratio
     }
     fprintf(fp, "================================================================================================================\n");
     fclose(fp);
+    usleep(500000);
     freeCourseList(&courseListByStudentID);
 }
 
@@ -201,6 +203,7 @@ void displayALLCoursesByStudentID(struct RegistrationList *registrationList, str
     }
     fprintf(fp, "+============================================================+\n");
     fclose(fp);
+    usleep(500000);
     freeCourseList(&courseListByStudentID);
 }
 
@@ -221,6 +224,7 @@ void displayCourseList(struct CourseList *courseList) {
 
     fprintf(fp, "==================\n");
     fclose(fp);
+    usleep(500000);
 }
 void freeCourseList(struct CourseList *courseList)
 {

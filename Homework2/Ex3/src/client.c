@@ -74,6 +74,7 @@ void viewSchedule (char studentID[]) {
     char weekday[20];
     char sendline[MAXLINE], recvline[MAXLINE];
 
+    int n;
     printf("Enter the weekday (e.g., Monday, Tuesday) or type ALL to view week schedule: ");
     scanf("%s", weekday);
     getchar();
@@ -81,19 +82,34 @@ void viewSchedule (char studentID[]) {
         sprintf(sendline, "%d %s", VIEWWEEKDAYSCHEDULE, weekday);
         // eg.: 2 Tuesday
         send (sockfd, sendline, strlen(sendline), 0);
+        while ((n = recv(sockfd, recvline, MAXLINE, 0)) > 0) {
+            if (strcmp(recvline, "End") != 0) {
+                printf("%s", recvline);
+                memset(recvline, 0, sizeof(recvline));
+            } else {
+                memset(recvline, 0, sizeof(recvline));
+                break;
+            }
+        }
     }
     else if (strcmp(weekday, "ALL")==0) {
         sprintf(sendline, "%d %s", VIEWWEEKSCHEDULE, weekday);
         /// eg.: 3 ALL
         send (sockfd, sendline, strlen(sendline), 0);
+        memset(recvline, 0, sizeof(recvline));
+        while ((n = recv(sockfd, recvline, MAXLINE, 0)) > 0) {
+            if (strcmp(recvline, "End") != 0) {
+                printf("%s", recvline);
+                memset(recvline, 0, sizeof(recvline));
+            } else {
+                memset(recvline, 0, sizeof(recvline));
+                break;
+            }
+        }
     }
     else {
         printf ("Invalid weekday!!!\n\n");
         return;
-    }
-    int n;
-    while ((n = recv(sockfd, recvline, MAXLINE, 0)) > 0) {
-        fputs(recvline, stdout);
     }
 }
 

@@ -1,0 +1,11 @@
+# Ignore .vscode directory
+.vscode/
+
+# Ignore bin directory
+bin/
+
+# Ignore main.exe file
+main.exe
+
+# Ignore timetable.txt file
+src/timetable.txt

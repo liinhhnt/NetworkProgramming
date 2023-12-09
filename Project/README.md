@@ -11,6 +11,6 @@ g++ -o test_mysql test_mysql.cpp -lmysqlcppconn
 
 Run sample code to verify whether mysql connector can connect with database:
 ```
-g++ -o test_ConnectDB testConnectDB.cpp -lmysqlcppconn
-./test_ConnectDB
+g++ -o testConnectDB testConnectDB.cpp -lmysqlcppconn
+./testConnectDB
 ```

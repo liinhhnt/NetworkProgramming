@@ -38,15 +38,15 @@ int login(char *studentID, char *username, char *password)
     }
 }
 
-void viewSchedule(char studentID[], char *weekday)
+void viewSchedule(char studentID[], char *weekday, int connfd)
 {
     if (!strcmp(weekday, "Monday") || !strcmp(weekday, "Tuesday") || !strcmp(weekday, "Wednesday") || !strcmp(weekday, "Thursday") || !strcmp(weekday, "Friday"))
     {
-        displayCourseListByStudentIDAndWeekDay(&registrationList, &courseList, studentID, weekday);
+        displayCourseListByStudentIDAndWeekDay(&registrationList, &courseList, studentID, weekday, connfd);
     }
     else if (strcmp(weekday, "ALL") == 0)
     {
-        displayALLCoursesByStudentID(&registrationList, &courseList, studentID);
+        displayALLCoursesByStudentID(&registrationList, &courseList, studentID, connfd);
     }
     else
         printf("Invalid weekday!!!\n\n");
@@ -143,13 +143,7 @@ int main(int argc, char **argv)
                     result = sscanf(buf, "%c %s", &cmd, weekday);
                     if (result == 2)
                     {
-                        viewSchedule(studentID, weekday);
-                        FILE *file = fopen("timetable.txt", "r"); // file receives the timetable.
-                        while ((n = fgets(sendline, MAXLINE, file)) != NULL)
-                        {
-                            n = send(connfd, sendline, strlen(sendline), 0);
-                        }
-                        fclose(file);
+                        viewSchedule(studentID, weekday, connfd);
                         usleep(500000);
                         n = send(connfd, END, strlen(END), 0);
                     }
@@ -160,13 +154,7 @@ int main(int argc, char **argv)
                     result = sscanf(buf, "%c %s", &cmd, weekday);
                     if (result == 2)
                     {
-                        viewSchedule(studentID, weekday);
-                        FILE *file = fopen("timetable.txt", "r"); // file receives the timetable.
-                        while ((n = fgets(sendline, MAXLINE, file)) != NULL)
-                        {
-                            n = send(connfd, sendline, strlen(sendline), 0);
-                        }
-                        fclose(file);
+                        viewSchedule(studentID, weekday, connfd);
                         usleep(500000);
                         n = send(connfd, END, strlen(END), 0);
                     }

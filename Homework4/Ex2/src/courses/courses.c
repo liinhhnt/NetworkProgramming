@@ -2,8 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include "courses.h"
 #include "../registrations/registration.h"
+
+#define MAXLINE 4096   /*max text line length*/
+
+char sendline[MAXLINE];
 
 void initCourseList(struct CourseList *courseList)
 {
@@ -143,30 +150,33 @@ void getCourseListByCourseIDAndWeekDay (struct CourseList *courseList, struct Co
     }
 }
 
-void displayCourseListByStudentIDAndWeekDay(struct RegistrationList *registrationList, struct CourseList *courseList, char studentID[], char weekday[]) {
+void displayCourseListByStudentIDAndWeekDay(struct RegistrationList *registrationList, struct CourseList *courseList, char studentID[], char weekday[], int connfd) {
     struct CourseList courseListByStudentID;
     initCourseList (&courseListByStudentID);
     getStudentRegistrationList(registrationList, studentID, &courseListByStudentID);
     getCourseListByCourseIDAndWeekDay (courseList, &courseListByStudentID, weekday);
-    FILE * fp = fopen ("timetable.txt", "w+");
     // display
-    fprintf(fp, "================================================================================================================\n");
-    fprintf(fp, "%-10s | %-25s | %-10s | %-12s | %-15s | %-30s | %-10s\n", "Code", "Course", "Week Day", "AM/PM", "Period", "Week", "Room");
-    fprintf(fp, "----------------------------------------------------------------------------------------------------------------\n");
+    send(connfd, "================================================================================================================\n", MAXLINE, 0);
+    sprintf(sendline, "%-10s | %-25s | %-10s | %-12s | %-15s | %-30s | %-10s\n", "Code", "Course", "Week Day", "AM/PM", "Period", "Week", "Room");
+    send(connfd, sendline, MAXLINE, 0);
+    memset(sendline, 0, strlen(sendline));
+    send(connfd, "----------------------------------------------------------------------------------------------------------------\n", MAXLINE, 0);
     for (int i = 0; i < courseListByStudentID.size; i++) {
         struct Course course = courseListByStudentID.courses[i];
         if (strlen(course.code) && (strcmp(course.weekday, weekday) == 0)) {
-            fprintf(fp, "%-10s | %-25s | %-10s | %-12s | %-15s | %-30s | %-10s\n",
+            sprintf(sendline, "%-10s | %-25s | %-10s | %-12s | %-15s | %-30s | %-10s\n",
                 course.code, course.name, course.weekday, course.timeOfDay, course.period, course.weeks, course.room);
+            send(connfd, sendline, MAXLINE, 0);
+            memset(sendline, 0, MAXLINE);
         }
     }
-    fprintf(fp, "================================================================================================================\n");
-    fclose(fp);
+    send(connfd, "================================================================================================================\n", MAXLINE, 0);
+    memset(sendline, 0, strlen(sendline));
     usleep(500000);
     freeCourseList(&courseListByStudentID);
 }
 
-void displayALLCoursesByStudentID(struct RegistrationList *registrationList, struct CourseList *courseList, char studentID[]) {
+void displayALLCoursesByStudentID(struct RegistrationList *registrationList, struct CourseList *courseList, char studentID[], int connfd) {
     struct CourseList courseListByStudentID;
     initCourseList (&courseListByStudentID);
     getStudentRegistrationList(registrationList, studentID, &courseListByStudentID);
@@ -188,21 +198,41 @@ void displayALLCoursesByStudentID(struct RegistrationList *registrationList, str
             }
          }
     }
-    FILE * fp = fopen ("timetable.txt", "w+");
     //Display the schedule 
-    fprintf(fp, "+============================================================+\n");
-    fprintf(fp, "|    | Monday   | Tuesday  | Wednesday | Thursday | Friday   |\n");
-    fprintf(fp, "|------------------------------------------------------------|\n");
+    send(connfd, "+============================================================+\n", MAXLINE, 0);
+    send(connfd, "|    | Monday   | Tuesday  | Wednesday | Thursday | Friday   |\n", MAXLINE, 0);
+    send(connfd, "|------------------------------------------------------------|\n", MAXLINE, 0);
     for (int t = 1; t <= 12; t++) {
-        fprintf(fp, "| %-3d|", t);
-        if (schedule[2][t]) fprintf(fp, " %-8s |", schedule[2][t]); else fprintf(fp, "           |");
-        if (schedule[3][t]) fprintf(fp, " %-8s |", schedule[3][t]); else fprintf(fp, "           |");
-        if (schedule[4][t]) fprintf(fp, " %-9s |", schedule[4][t]); else fprintf(fp, "           |");
-        if (schedule[5][t]) fprintf(fp, " %-8s |", schedule[5][t]); else fprintf(fp, "           |");
-        if (schedule[6][t]) fprintf(fp, " %-8s |\n", schedule[6][t]); else fprintf(fp, "           |\n");
+        sprintf(sendline, "| %-3d|", t);
+        send(connfd, sendline, MAXLINE, 0);
+        memset(sendline, 0, MAXLINE);
+        if (schedule[2][t]) {
+            sprintf(sendline, " %-8s |", schedule[2][t]);
+            send(connfd, sendline, MAXLINE, 0);
+            memset(sendline, 0, MAXLINE);
+        }  else send(connfd, "           |", MAXLINE, 0);
+        if (schedule[3][t]) {
+            sprintf(sendline, " %-8s |", schedule[3][t]);
+            send(connfd, sendline, MAXLINE, 0);
+            memset(sendline, 0, MAXLINE);
+        } else send(connfd, "           |", MAXLINE, 0);
+        if (schedule[4][t]) {
+            sprintf(sendline, " %-8s |", schedule[4][t]);
+            send(connfd, sendline, MAXLINE, 0);
+            memset(sendline, 0, MAXLINE);
+        } else send(connfd, "           |", MAXLINE, 0);
+        if (schedule[5][t]) {
+            sprintf(sendline, " %-8s |", schedule[5][t]);
+            send(connfd, sendline, MAXLINE, 0);
+            memset(sendline, 0, MAXLINE);
+        } else send(connfd, "           |", MAXLINE, 0);
+        if (schedule[6][t]) {
+            sprintf(sendline, " %-8s  |\n", schedule[6][t]);
+            send(connfd, sendline, MAXLINE, 0);
+            memset(sendline, 0, MAXLINE);
+        } else send(connfd, "            |\n", MAXLINE, 0);
     }
-    fprintf(fp, "+============================================================+\n");
-    fclose(fp);
+    send(connfd, "+============================================================+\n", MAXLINE, 0);
     usleep(500000);
     freeCourseList(&courseListByStudentID);
 }

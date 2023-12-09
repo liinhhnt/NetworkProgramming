@@ -21,9 +21,9 @@ int main() {
         conn->setSchema(database);
 
         // Sample SQL queries
-        string createTableQuery = "CREATE TABLE IF NOT EXISTS users (id INT AUTO_INCREMENT, name VARCHAR(50), PRIMARY KEY (id))";
-        string insertQuery = "INSERT INTO users (name) VALUES ('Alice'), ('Bob'), ('Charlie')";
-        string selectQuery = "SELECT * FROM users";
+        string createTableQuery = "CREATE TABLE IF NOT EXISTS users_test_tables (id INT AUTO_INCREMENT, name VARCHAR(50), PRIMARY KEY (id))";
+        string insertQuery = "INSERT INTO users_test_tables (name) VALUES ('Alice'), ('Bob'), ('Charlie')";
+        string selectQuery = "SELECT * FROM users_test_tables";
 
         // Execute SQL queries
         sql::Statement *stmt = conn->createStatement();

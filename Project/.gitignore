@@ -1,3 +1,3 @@
 # sample executed files
-test_ConnectDB
-test_mysql
+./src/dbConnector/test_ConnectDB
+./src/dbConnector/test_mysql

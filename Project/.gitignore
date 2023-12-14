@@ -1,0 +1,3 @@
+# sample executed files
+./src/dbConnector/test_ConnectDB
+./src/dbConnector/test_mysql

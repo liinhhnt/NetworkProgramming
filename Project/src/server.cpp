@@ -107,8 +107,8 @@ int main(int argc, char **argv)
                 state = ntohl(state);
                 //process the data here
                       //test
-                // mysqlOps.selectAllRecords("SELECT * FROM cinemas;");
-                // mysqlOps.selectAllRecords("SELECT * FROM users;");
+                mysqlOps.selectAllRecords("SELECT * FROM cinemas;");
+                mysqlOps.selectAllRecords("SELECT * FROM users;");
                 
             }
             mysqlOps.disconnect();

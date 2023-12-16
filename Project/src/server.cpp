@@ -8,6 +8,8 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <signal.h>
+#include "dbConnector/mysql_connector.h"
+#include "enums.h"
 
 #define MAXLINE 4096   // max text line length
 #define SERV_PORT 3000 // port
@@ -37,6 +39,7 @@ void initServer()
         exit(1);
     }
     std::cout << "[+]Server Socket is created." << std::endl;
+
     // preparation of the socket address
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
@@ -80,6 +83,14 @@ int main(int argc, char **argv)
         {
             // close listening socket
             close(socketfd);
+             // Initialize MySQL operations
+            MySQLOperations mysqlOps;
+            if (!mysqlOps.connect(ipAddress, username, password, database)) {
+                std::cout << "Failed to connect to MySQL database." << std::endl;
+                exit(1);
+            }
+            else std::cout << "Connected to Database!\n";
+
             while (child_process_running)
             {
                 n = recv(connfd, &state, sizeof(state), 0);
@@ -95,7 +106,12 @@ int main(int argc, char **argv)
                 }
                 state = ntohl(state);
                 //process the data here
+                      //test
+                // mysqlOps.selectAllRecords("SELECT * FROM cinemas;");
+                // mysqlOps.selectAllRecords("SELECT * FROM users;");
+                
             }
+            mysqlOps.disconnect();
         }
     }
     close(connfd);

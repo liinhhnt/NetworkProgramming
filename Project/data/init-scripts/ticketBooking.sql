@@ -1,4 +1,4 @@
--- DROP DATABASE IF EXISTS ticketBooking;-- 
+DROP DATABASE IF EXISTS ticketBooking; 
 CREATE DATABASE ticketBooking;
 USE ticketBooking;
 
@@ -72,9 +72,8 @@ DELIMITER ;
 
 
 DELIMITER //
-CREATE TRIGGER check_room_availability
-BEFORE INSERT ON showtimes
-FOR EACH ROW
+
+CREATE PROCEDURE CheckRoomAvailability(IN new_startTime DATETIME, IN new_endTime DATETIME, IN new_roomId INT, IN new_weekday varchar(50)	)
 BEGIN
     DECLARE room_occupied INT;
 
@@ -82,11 +81,11 @@ BEGIN
     SELECT COUNT(*)
     INTO room_occupied
     FROM showtimes
-    WHERE roomId = NEW.roomId
-        AND weekday = NEW.weekday
+    WHERE roomId = new_roomId
+        AND weekday = new_weekday
         AND NOT (
-            NEW.startTime >= endTime 
-            OR NEW.endTime <= startTime
+            new_startTime >= endTime 
+            OR new_endTime <= startTime
         );
 
     IF room_occupied > 0 THEN
@@ -95,8 +94,32 @@ BEGIN
     END IF;
 END;
 //
+
 DELIMITER ;
 
+DELIMITER //
+
+CREATE TRIGGER check_room_availability
+BEFORE INSERT ON showtimes
+FOR EACH ROW
+BEGIN
+    CALL CheckRoomAvailability(NEW.startTime, NEW.endTime, NEW.roomId, NEW.weekday);
+END;
+//
+
+DELIMITER ;
+
+DELIMITER //
+
+CREATE TRIGGER check_room_availability_on_update
+BEFORE UPDATE ON showtimes
+FOR EACH ROW
+BEGIN
+    CALL CheckRoomAvailability(NEW.startTime, NEW.endTime, NEW.roomId, NEW.weekday);
+END;
+//
+
+DELIMITER ;
 
 CREATE TABLE users (
     username VARCHAR(255) NOT NULL,

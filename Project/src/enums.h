@@ -25,7 +25,7 @@ enum AuthCode {
 // Replace these fields to match with your database
 const char * database = "ticketBooking";
 const char * username = "root";
-const char * password = "ntlinh";
-const char * ipAddress = "tcp://127.0.0.1:3308";
+const char * password = "123";
+const char * ipAddress = "tcp://127.0.0.1:3306";
 
 #endif // ENUMS_H

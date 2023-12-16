@@ -14,3 +14,16 @@ Run sample code to verify whether mysql connector can connect with database:
 g++ -o testConnectDB testConnectDB.cpp -lmysqlcppconn
 ./testConnectDB
 ```
+
+**RUN INSTRUCTION:**
+
+**RUN INSTRUCTION:**
+```bash
+g++ -o server server.cpp dbConnector/mysql_connector.cpp -lmysqlcppconn
+./server
+```
+
+```bash
+g++ -o client client.cpp
+./client
+```

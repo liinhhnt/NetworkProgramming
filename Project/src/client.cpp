@@ -161,7 +161,7 @@ void _register()
 
     // store values in sendline
     sprintf(sendline, "%d\n%s %s\n", REGISTER, username, password);
-    // send request to server
+    // send request to server with protocol: "REGISTER\n<username> <password>\n"
     send (socketfd, sendline, strlen(sendline), 0);
     // eg.: 1 linhnt 123
 

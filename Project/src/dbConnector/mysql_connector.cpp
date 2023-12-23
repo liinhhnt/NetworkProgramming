@@ -36,6 +36,7 @@ bool MySQLOperations::createTableIfNotExists(const string& createTableQuery) {
 }
 
 bool MySQLOperations::insertRecords(const string& insertQuery) {
+    cout << insertQuery << endl;
     try {
         stmt->execute(insertQuery);
         return true;

@@ -1,6 +1,12 @@
 #ifndef ENUMS_H
 #define ENUMS_H
 
+// Replace these fields to match with your database
+const char * database = "ticketBooking";
+const char * username = "root";
+const char * password = "123";
+const char * ipAddress = "tcp://127.0.0.1:3308";
+
 enum UserActions {
     REGISTER = 1,
     LOGIN = 2,
@@ -22,10 +28,10 @@ enum AuthCode {
     SUCCESS = 1
 };
 
-// Replace these fields to match with your database
-const char * database = "ticketBooking";
-const char * username = "root";
-const char * password = "123";
-const char * ipAddress = "tcp://127.0.0.1:3308";
+enum UserMode {
+    BUYER = 1,
+    SALER = 2,
+    ADMIN = 3
+};
 
 #endif // ENUMS_H

@@ -1,4 +1,4 @@
-#include <iostream>
+#include <bits/stdc++.h>
 #include <cstdlib>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -15,53 +15,16 @@
 #define SERV_PORT 3000 // port
 #define LISTENQ 8      // maximum number of client connections
 
+using namespace std;
+
 int socketfd;
 int child_process_running = 1;
 
-void sig_chld(int signo)
-{
-    pid_t pid;
-    int stat;
-    while ((pid = waitpid(-1, &stat, WNOHANG)) > 0)
-        std::cout << "[+]Child " << pid << " terminated with status " << stat << std::endl;
-    return;
-}
-
-void initServer()
-{
-    struct sockaddr_in servaddr;
-    // creation of the socket
-    // If socketfd<0 there was an error in the creation of the socket
-    socketfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (socketfd < 0)
-    {
-        std::cout << "[-]Error in creating the socket" << std::endl;
-        exit(1);
-    }
-    std::cout << "[+]Server Socket is created." << std::endl;
-
-    // preparation of the socket address
-    memset(&servaddr, 0, sizeof(servaddr));
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    servaddr.sin_port = htons(SERV_PORT);
-
-    // bind the socket
-    if (bind(socketfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
-    {
-        std::cout << "[-]Error in binding." << std::endl;
-        exit(1);
-    }
-    // listen to the socket by creating a connection queue, then wait for clients
-    if (listen(socketfd, LISTENQ) == 0)
-    {
-        std::cout << "[+]Listening...." << std::endl;
-    }
-    else
-    {
-        std::cout << "[-]Error in binding." << std::endl;
-    }
-}
+void sig_chld(int signo);
+void initServer();
+int _register(MySQLOperations *mysqlOps, string username, string password);
+void log_recv_msg(string client_ip, int client_port, string buf);
+void log_send_msg(int connfd, string client_ip, int client_port, char response[]);
 
 int main(int argc, char **argv)
 {
@@ -80,26 +43,29 @@ int main(int argc, char **argv)
         {
             exit(1);
         }
-        std::cout << "\n[+]" << inet_ntoa(cliaddr.sin_addr) << ":" << ntohs(cliaddr.sin_port) << " - Connection accepted. Received request..." << std::endl;
+        cout << "\n[+]" << inet_ntoa(cliaddr.sin_addr) << ":" << ntohs(cliaddr.sin_port) << " - Connection accepted. Received request..." << endl;
 
         if ((childpid = fork()) == 0) // if it’s 0, it’s child process
         {
             char client_ip[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, &(cliaddr.sin_addr), client_ip, INET_ADDRSTRLEN); // convert ip number from binary to string
-            int client_port = ntohs(cliaddr.sin_port); // network order to host short
+            int client_port = ntohs(cliaddr.sin_port);                           // network order to host short
 
             printf("\n[+]%s\n", "Child created for dealing with client requests");
 
             // close listening socket
             close(socketfd);
 
-             // Initialize MySQL operations
+            // Initialize MySQL operations
             MySQLOperations mysqlOps;
-            if (!mysqlOps.connect(ipAddress, username, password, database)) {
-                std::cout << "[-]Failed to connect to MySQL database\n" << std::endl;
+            if (!mysqlOps.connect(ipAddress, username, password, database))
+            {
+                cout << "[-]Failed to connect to MySQL database\n"
+                          << endl;
                 exit(1);
             }
-            else std::cout << "[+]Connected to Database!\n";
+            else
+                cout << "[+]Connected to Database!\n";
 
             while (child_process_running)
             {
@@ -111,24 +77,37 @@ int main(int argc, char **argv)
                 }
                 if (n == 0)
                 {
-                    std::cout << "[+]" << client_ip << ":" << client_port << " - Disconnected" << std::endl;
+                    cout << "[+]" << client_ip << ":" << client_port << " - Disconnected" << endl;
                     exit(0);
                 }
 
-                // Log the received message
-                std::cout << "[+]Received message from " << client_ip << ":" << client_port << " - " << buf << std::endl;
-                
-                n = send(connfd, buf, n, 0);
-                if (n < 0)
+                log_recv_msg(client_ip, client_port, buf);
+
+                int cmd = (int)(buf[0] - '0');
+                switch (cmd)
                 {
-                    perror("Send error");
-                    exit(1);
+                case REGISTER:
+                {
+                    char username[20], password[20], response[5];
+                    int noargs = sscanf(buf, "%d %s %s", &cmd, username, password);
+                    if (noargs == 3)
+                    {
+                        int result = _register(&mysqlOps, username, password);
+                        response[0] = '0' + result;
+                        response[1] = '\0';
+                        log_send_msg(connfd, client_ip, client_port, response);
+                    }
+                    else
+                        printf("[-]Invalid register protocol! %s\n", buf);
+                    break;
                 }
-                std::cout << "[+]Sent message to " << client_ip << ":" << client_port << " - " << buf << std::endl;
+                default:
+                    printf("[-]Invalid protocol.\n\n");
+                }
+
                 int i;
                 for (i = 0; i < MAXLINE; i++)
                     buf[i] = '\0';
-                
             }
             mysqlOps.disconnect();
         }
@@ -138,4 +117,74 @@ int main(int argc, char **argv)
     close(connfd);
 }
 
+void log_recv_msg(string client_ip, int client_port, string buf)
+{
+    cout << "[+]Received message from " << client_ip << ":" << client_port << " - " << buf << endl;
+}
 
+void log_send_msg(int connfd, string client_ip, int client_port, char response[])
+{
+    int n = send(connfd, response, MAXLINE, 0);
+    if (n < 0)
+    {
+        perror("Send error");
+        exit(1);
+    }
+    cout << "[+]Sent message to " << client_ip << ":" << client_port << " - " << (response[0]=='1'? "SUCCESS\n" : "FAIL\n");
+}
+
+void sig_chld(int signo)
+{
+    pid_t pid;
+    int stat;
+    while ((pid = waitpid(-1, &stat, WNOHANG)) > 0)
+        cout << "[+]Child " << pid << " terminated with status " << stat << endl;
+    return;
+}
+
+void initServer()
+{
+    struct sockaddr_in servaddr;
+    // creation of the socket
+    // If socketfd<0 there was an error in the creation of the socket
+    socketfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (socketfd < 0)
+    {
+        cout << "[-]Error in creating the socket" << endl;
+        exit(1);
+    }
+    cout << "[+]Server Socket is created." << endl;
+
+    // preparation of the socket address
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons(SERV_PORT);
+
+    // bind the socket
+    if (bind(socketfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
+    {
+        cout << "[-]Error in binding." << endl;
+        exit(1);
+    }
+    // listen to the socket by creating a connection queue, then wait for clients
+    if (listen(socketfd, LISTENQ) == 0)
+    {
+        cout << "[+]Listening...." << endl;
+    }
+    else
+    {
+        cout << "[-]Error in binding." << endl;
+    }
+}
+
+int _register(MySQLOperations* mysqlOps, string username, string password)
+{
+    string sql = "INSERT INTO users(username, password) VALUES ('" + username + "','" + password + "');";
+    bool res = (*mysqlOps).insertRecords(sql);
+    cout << "SQL query: " << sql << '\n';
+    if (res)
+        return SUCCESS;
+    else
+        return FAIL;
+}

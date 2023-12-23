@@ -1,15 +1,56 @@
-#include <iostream>
+#include <bits/stdc++.h>
 #include <cstring>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include "enums.h"
 
 #define MAXLINE 4096   // max text line length
 #define SERV_PORT 3000 // port
 
+using namespace std;
+
 int socketfd;
+
+void connectToServer(char *ip);
+void displayMenu();
+int login (string *username);
+void _register();
+
+int main(int argc, char **argv)
+{
+    int choice = 0, re;
+    char uname[MAXLINE];
+    char sendline[MAXLINE], recvline[MAXLINE];
+    if (argc != 2)
+    {
+        fprintf(stderr, "Usage: %s <server_address>\n", argv[0]);
+        exit(1);
+    }
+
+    connectToServer(argv[1]);
+
+    displayMenu();
+
+    // while (fgets(sendline, MAXLINE, stdin) != NULL)
+    // {
+    //     send(socketfd, sendline, strlen(sendline), 0);
+    //     if (recv(socketfd, recvline, MAXLINE, 0) == 0)
+    //     {
+    //         // error: server terminated prematurely
+    //         perror("The server terminated prematurely");
+    //         exit(4);
+    //     }
+    //     std::cout << "[+]String received from the server: ";
+    //     fputs(recvline, stdout);
+    //     memset(sendline, 0, sizeof(sendline));
+    //     memset(recvline, 0, sizeof(recvline));
+    // }
+    // exit(0);
+    return 0;
+}
 
 void connectToServer(char *ip)
 {
@@ -36,32 +77,104 @@ void connectToServer(char *ip)
     std::cout << "[+]Connected to Server." << std::endl;
 }
 
-int main(int argc, char **argv)
+void displayMenu()
 {
-    int choice = 0, re;
-    char uname[MAXLINE];
-    char sendline[MAXLINE], recvline[MAXLINE];
-    if (argc != 2)
+    for (;;)
     {
-        std::cerr << "[-]Missing IP address of the server" << std::endl;
-        exit(1);
-    }
-    connectToServer(argv[1]);
-    // memset(&buffer, 0, sizeof(buffer));
-    while (fgets(sendline, MAXLINE, stdin) != NULL)
-    {
-        send(socketfd, sendline, strlen(sendline), 0);
-        if (recv(socketfd, recvline, MAXLINE, 0) == 0)
+        int loggedIn = 0;
+        string username;
+        while (1)
         {
-            // error: server terminated prematurely
-            perror("The server terminated prematurely");
-            exit(4);
+            if (!loggedIn)
+            {
+                printf("\n====================================\n");
+                printf("Welcome to Online Movie Ticket Reservation Application\n");
+                printf("1. Register\n");
+                printf("2. Login\n");
+                printf("3. Exit\n");
+                printf("Enter your choice: ");
+
+                int choice;
+                scanf("%d", &choice);
+                getchar();
+
+                switch (choice)
+                {
+                case 1:
+                    _register();
+                    break;
+
+                case 2:
+                    cout << "LOGIN\n";
+                    // loggedIn = login(&username);
+                    break;
+
+                case 3:
+                    printf("Goodbye!\n");
+                    exit(0);
+                    break;
+                default:
+                    printf("Invalid choice. Try again.\n\n");
+                }
+            }
+            else
+            {
+                // printf("----------------------------------\n");
+                // printf("Logged in as Student ID: %s\n", studentID);
+                // printf("1. View Schedule\n");
+                // printf("2. Logout\n");
+                // printf("Enter your choice: ");
+
+                // int choice;
+                // scanf("%d", &choice);
+                // getchar();
+                // if (choice == 1)
+                // {
+                //     viewSchedule(studentID);
+                // }
+                // else if (choice == 2)
+                // {
+                //     loggedIn = 0;
+                //     close(sockfd);
+                //     printf("Logged out successfully.\n\n");
+                //     exit(0);
+                // }
+                // else
+                // {
+                //     printf("Invalid choice. Try again.\n");
+                // }
+            }
         }
-        std::cout << "[+]String received from the server: ";
-        fputs(recvline, stdout);
-        memset(sendline, 0, sizeof(sendline));
-        memset(recvline, 0, sizeof(recvline));
     }
-    exit(0);
-    return 0;
+}
+
+void _register()
+{
+    char username[30], password[30];
+    // string username, password;
+    char sendline[MAXLINE], recvline[MAXLINE];
+
+    cout << "Enter your username: ";
+    cin >> username;
+    cout << "Enter your password: ";
+    cin >> password;
+
+    // store values in sendline
+    sprintf(sendline, "%d %s %s", REGISTER, username, password);
+    // send request to server
+    send (socketfd, sendline, strlen(sendline), 0);
+    // eg.: 1 linhnt 123
+
+    recv(socketfd, recvline, MAXLINE, 0);
+    int auth = recvline[0] - '0';
+    if (auth == SUCCESS){
+        printf("Register successfully!\nNow you can login with this new account.\n");
+    }
+    else if (auth == FAIL)
+    {
+        printf("This username already existed!!!\n");
+    } else {
+        perror("The server terminated prematurely");
+        exit(4);
+    }
 }

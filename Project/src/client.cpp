@@ -160,7 +160,7 @@ void _register()
     cin >> password;
 
     // store values in sendline
-    sprintf(sendline, "%d %s %s", REGISTER, username, password);
+    sprintf(sendline, "%d\n%s %s\n", REGISTER, username, password);
     // send request to server
     send (socketfd, sendline, strlen(sendline), 0);
     // eg.: 1 linhnt 123

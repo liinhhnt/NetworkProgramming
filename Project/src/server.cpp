@@ -89,7 +89,7 @@ int main(int argc, char **argv)
                 case REGISTER:
                 {
                     char username[20], password[20], response[5];
-                    int noargs = sscanf(buf, "%d %s %s", &cmd, username, password);
+                    int noargs = sscanf(buf, "%d\n%s %s\n", &cmd, username, password);
                     if (noargs == 3)
                     {
                         int result = _register(&mysqlOps, username, password);
@@ -99,6 +99,7 @@ int main(int argc, char **argv)
                     }
                     else
                         printf("[-]Invalid register protocol! %s\n", buf);
+                        // Do we need to inform client if they send a wrong message protocol?
                     break;
                 }
                 default:

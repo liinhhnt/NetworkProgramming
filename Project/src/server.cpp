@@ -23,7 +23,7 @@ void sig_chld(int signo)
     pid_t pid;
     int stat;
     while ((pid = waitpid(-1, &stat, WNOHANG)) > 0)
-        std::cout << "child " << pid << " terminated with status " << stat << std::endl;
+        std::cout << "[+]Child " << pid << " terminated with status " << stat << std::endl;
     return;
 }
 
@@ -35,7 +35,7 @@ void initServer()
     socketfd = socket(AF_INET, SOCK_STREAM, 0);
     if (socketfd < 0)
     {
-        std::cout << "[-]Error in connection." << std::endl;
+        std::cout << "[-]Error in creating the socket" << std::endl;
         exit(1);
     }
     std::cout << "[+]Server Socket is created." << std::endl;
@@ -45,6 +45,7 @@ void initServer()
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port = htons(SERV_PORT);
+
     // bind the socket
     if (bind(socketfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
     {
@@ -64,7 +65,7 @@ void initServer()
 
 int main(int argc, char **argv)
 {
-    int listenfd, connfd, n, state;
+    int listenfd, connfd, n;
     pid_t childpid;
     socklen_t clilen;
     char buf[MAXLINE];
@@ -73,27 +74,36 @@ int main(int argc, char **argv)
     for (;;)
     {
         clilen = sizeof(cliaddr);
+        // accept a connection
         connfd = accept(socketfd, (struct sockaddr *)&cliaddr, &clilen);
         if (connfd < 0)
         {
             exit(1);
         }
         std::cout << "\n[+]" << inet_ntoa(cliaddr.sin_addr) << ":" << ntohs(cliaddr.sin_port) << " - Connection accepted. Received request..." << std::endl;
-        if ((childpid = fork()) == 0)
+
+        if ((childpid = fork()) == 0) // if it’s 0, it’s child process
         {
+            char client_ip[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &(cliaddr.sin_addr), client_ip, INET_ADDRSTRLEN); // convert ip number from binary to string
+            int client_port = ntohs(cliaddr.sin_port); // network order to host short
+
+            printf("\n[+]%s\n", "Child created for dealing with client requests");
+
             // close listening socket
             close(socketfd);
+
              // Initialize MySQL operations
             MySQLOperations mysqlOps;
             if (!mysqlOps.connect(ipAddress, username, password, database)) {
-                std::cout << "Failed to connect to MySQL database." << std::endl;
+                std::cout << "[-]Failed to connect to MySQL database\n" << std::endl;
                 exit(1);
             }
-            else std::cout << "Connected to Database!\n";
+            else std::cout << "[+]Connected to Database!\n";
 
             while (child_process_running)
             {
-                n = recv(connfd, &state, sizeof(state), 0);
+                n = recv(connfd, buf, MAXLINE, 0);
                 if (n < 0)
                 {
                     perror("Read error");
@@ -101,19 +111,30 @@ int main(int argc, char **argv)
                 }
                 if (n == 0)
                 {
-                    std::cout << "[+]" << inet_ntoa(cliaddr.sin_addr) << ":" << ntohs(cliaddr.sin_port) << " - Disconnected" << std::endl;
+                    std::cout << "[+]" << client_ip << ":" << client_port << " - Disconnected" << std::endl;
                     exit(0);
                 }
-                state = ntohl(state);
-                //process the data here
-                      //test
-                mysqlOps.selectAllRecords("SELECT * FROM cinemas;");
-                mysqlOps.selectAllRecords("SELECT * FROM users;");
+
+                // Log the received message
+                std::cout << "[+]Received message from " << client_ip << ":" << client_port << " - " << buf << std::endl;
+                
+                n = send(connfd, buf, n, 0);
+                if (n < 0)
+                {
+                    perror("Send error");
+                    exit(1);
+                }
+                std::cout << "[+]Sent message to " << client_ip << ":" << client_port << " - " << buf << std::endl;
+                int i;
+                for (i = 0; i < MAXLINE; i++)
+                    buf[i] = '\0';
                 
             }
             mysqlOps.disconnect();
         }
     }
+    signal(SIGCHLD, sig_chld); // signal sent when child process ends
+    // close socket of the server
     close(connfd);
 }
 

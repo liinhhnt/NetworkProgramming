@@ -57,9 +57,10 @@ int main(int argc, char **argv)
             perror("The server terminated prematurely");
             exit(4);
         }
-        std::cout << "String received from the server: ";
+        std::cout << "[+]String received from the server: ";
         fputs(recvline, stdout);
         memset(sendline, 0, sizeof(sendline));
+        memset(recvline, 0, sizeof(recvline));
     }
     exit(0);
     return 0;

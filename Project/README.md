@@ -17,13 +17,15 @@ g++ -o testConnectDB testConnectDB.cpp -lmysqlcppconn
 
 **RUN INSTRUCTION:**
 
-**RUN INSTRUCTION:**
+#### server
+
 ```bash
 g++ -o server server.cpp dbConnector/mysql_connector.cpp -lmysqlcppconn
 ./server
 ```
 
+#### client
 ```bash
 g++ -o client client.cpp
-./client
+./client 127.0.0.1
 ```

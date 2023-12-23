@@ -87,7 +87,7 @@ void displayMenu()
         {
             if (!loggedIn)
             {
-                printf("====================================\n");
+                printf("\n====================================\n");
                 printf("Welcome to Online Movie Ticket Reservation Application\n");
                 printf("1. Register\n");
                 printf("2. Login\n");

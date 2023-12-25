@@ -62,7 +62,7 @@ int main(int argc, char **argv)
             if (!mysqlOps.connect(ipAddress, username, password, database))
             {
                 cout << "[-]Failed to connect to MySQL database\n"
-                          << endl;
+                     << endl;
                 exit(1);
             }
             else
@@ -84,7 +84,16 @@ int main(int argc, char **argv)
 
                 log_recv_msg(client_ip, client_port, buf);
 
-                int cmd = (int)(buf[0] - '0');
+                int cmd = 0;
+
+                std::istringstream iss(buf); 
+                char digit;                  
+                while (iss >> digit)
+                {
+                    if (digit == '\n') break;
+                    cmd = cmd * 10 + (digit - '0');
+                }
+
                 switch (cmd)
                 {
                 case REGISTER:
@@ -98,7 +107,8 @@ int main(int argc, char **argv)
                         response[1] = '\0';
                         log_send_msg(connfd, client_ip, client_port, response);
                     }
-                    else {
+                    else
+                    {
                         printf("[-]Invalid register protocol! %s\n", buf);
                         sprintf(response, "Invalid register protocol!\n");
                         log_send_msg(connfd, client_ip, client_port, response);
@@ -116,21 +126,21 @@ int main(int argc, char **argv)
                         response[1] = '\0';
                         log_send_msg(connfd, client_ip, client_port, response);
                     }
-                    else {
+                    else
+                    {
                         printf("[-]Invalid login protocol! %s\n", buf);
                         sprintf(response, "Invalid login protocol!\n");
                         log_send_msg(connfd, client_ip, client_port, response);
                     }
                     break;
                 }
-                default: 
+                default:
                 {
                     char response[50];
                     printf("[-]Invalid protocol: wrong command code\n\n");
                     sprintf(response, "Invalid  protocol: wrong command code\n");
                     log_send_msg(connfd, client_ip, client_port, response);
                 }
-                    
                 }
 
                 int i;
@@ -206,7 +216,7 @@ void initServer()
     }
 }
 
-int _register(MySQLOperations* mysqlOps, string username, string password)
+int _register(MySQLOperations *mysqlOps, string username, string password)
 {
     string sql = "INSERT INTO users(username, password) VALUES ('" + username + "','" + password + "');";
     bool res = (*mysqlOps).insertRecords(sql);
@@ -218,7 +228,7 @@ int _register(MySQLOperations* mysqlOps, string username, string password)
 }
 
 // output: integer indicate usermode
-int login(MySQLOperations* mysqlOps, string username, string password)
+int login(MySQLOperations *mysqlOps, string username, string password)
 {
     string sql = "SELECT * FROM users WHERE username = '" + username + "' AND password = '" + password + "';";
     cout << "SQL query: " << sql << '\n';

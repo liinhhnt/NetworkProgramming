@@ -36,7 +36,6 @@ bool MySQLOperations::createTableIfNotExists(const string& createTableQuery) {
 }
 
 bool MySQLOperations::insertRecords(const string& insertQuery) {
-    cout << insertQuery << endl;
     try {
         stmt->execute(insertQuery);
         return true;
@@ -44,6 +43,24 @@ bool MySQLOperations::insertRecords(const string& insertQuery) {
         cerr << "Error inserting records: " << e.what() << endl;
     }
     return false;
+}
+
+int MySQLOperations::checkRoleUser(const string& countQuery) {
+    try {
+        sql::ResultSet *res = stmt->executeQuery(countQuery);
+        string role; 
+        if (res->next()) {
+            role = res->getString(3);
+            if (role == "buyer") return 1;
+            else if (role == "saler") return 2;
+            else if (role == "admin") return 3;
+            else return 0;
+        }
+        else return 0;
+    } catch (SQLException &e) {
+        cerr << "Error: " << e.what() << endl;
+        return 0;
+    }
 }
 
 void MySQLOperations::selectAllRecords(const string& selectQuery) {

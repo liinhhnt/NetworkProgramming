@@ -22,9 +22,10 @@ int child_process_running = 1;
 
 void sig_chld(int signo);
 void initServer();
-int _register(MySQLOperations *mysqlOps, string username, string password);
 void log_recv_msg(string client_ip, int client_port, string buf);
 void log_send_msg(int connfd, string client_ip, int client_port, char response[]);
+int _register(MySQLOperations *mysqlOps, string username, string password);
+int login(MySQLOperations *mysqlOps, string username, string password);
 
 int main(int argc, char **argv)
 {
@@ -88,7 +89,7 @@ int main(int argc, char **argv)
                 {
                 case REGISTER:
                 {
-                    char username[20], password[20], response[5];
+                    char username[20], password[20], response[50];
                     int noargs = sscanf(buf, "%d\n%s %s\n", &cmd, username, password);
                     if (noargs == 3)
                     {
@@ -97,13 +98,39 @@ int main(int argc, char **argv)
                         response[1] = '\0';
                         log_send_msg(connfd, client_ip, client_port, response);
                     }
-                    else
+                    else {
                         printf("[-]Invalid register protocol! %s\n", buf);
-                        // Do we need to inform client if they send a wrong message protocol?
+                        sprintf(response, "Invalid register protocol!\n");
+                        log_send_msg(connfd, client_ip, client_port, response);
+                    }
                     break;
                 }
-                default:
-                    printf("[-]Invalid protocol.\n\n");
+                case LOGIN:
+                {
+                    char username[20], password[20], response[50];
+                    int noargs = sscanf(buf, "%d\n%s %s\n", &cmd, username, password);
+                    if (noargs == 3)
+                    {
+                        int result = login(&mysqlOps, username, password);
+                        response[0] = '0' + result;
+                        response[1] = '\0';
+                        log_send_msg(connfd, client_ip, client_port, response);
+                    }
+                    else {
+                        printf("[-]Invalid login protocol! %s\n", buf);
+                        sprintf(response, "Invalid login protocol!\n");
+                        log_send_msg(connfd, client_ip, client_port, response);
+                    }
+                    break;
+                }
+                default: 
+                {
+                    char response[50];
+                    printf("[-]Invalid protocol: wrong command code\n\n");
+                    sprintf(response, "Invalid  protocol: wrong command code\n");
+                    log_send_msg(connfd, client_ip, client_port, response);
+                }
+                    
                 }
 
                 int i;
@@ -131,7 +158,7 @@ void log_send_msg(int connfd, string client_ip, int client_port, char response[]
         perror("Send error");
         exit(1);
     }
-    cout << "[+]Sent message to " << client_ip << ":" << client_port << " - " << (response[0]=='1'? "SUCCESS\n" : "FAIL\n");
+    cout << "[+]Sent message to " << client_ip << ":" << client_port << " - " << response << '\n';
 }
 
 void sig_chld(int signo)
@@ -186,6 +213,18 @@ int _register(MySQLOperations* mysqlOps, string username, string password)
     cout << "SQL query: " << sql << '\n';
     if (res)
         return SUCCESS;
+    else
+        return FAIL;
+}
+
+// output: integer indicate usermode
+int login(MySQLOperations* mysqlOps, string username, string password)
+{
+    string sql = "SELECT * FROM users WHERE username = '" + username + "' AND password = '" + password + "';";
+    cout << "SQL query: " << sql << '\n';
+    int res = (*mysqlOps).checkRoleUser(sql);
+    if (res)
+        return res;
     else
         return FAIL;
 }

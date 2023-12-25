@@ -94,55 +94,31 @@ void displayMenu()
                 printf("3. Exit\n");
                 printf("Enter your choice: ");
 
-                int choice;
-                scanf("%d", &choice);
-                getchar();
+                string choice;
+                cin >> choice;
 
-                switch (choice)
+                switch (choice[0])
                 {
-                case 1:
+                case '1':
                     _register();
                     break;
 
-                case 2:
-                    cout << "LOGIN\n";
-                    // loggedIn = login(&username);
+                case '2':
+                    loggedIn = login(&username);
                     break;
 
-                case 3:
+                case '3':
                     printf("Goodbye!\n");
                     exit(0);
                     break;
                 default:
-                    printf("Invalid choice. Try again.\n\n");
+                    printf("Invalid choice. Try again.\n");
+                    break;
                 }
             }
             else
             {
-                // printf("----------------------------------\n");
-                // printf("Logged in as Student ID: %s\n", studentID);
-                // printf("1. View Schedule\n");
-                // printf("2. Logout\n");
-                // printf("Enter your choice: ");
-
-                // int choice;
-                // scanf("%d", &choice);
-                // getchar();
-                // if (choice == 1)
-                // {
-                //     viewSchedule(studentID);
-                // }
-                // else if (choice == 2)
-                // {
-                //     loggedIn = 0;
-                //     close(sockfd);
-                //     printf("Logged out successfully.\n\n");
-                //     exit(0);
-                // }
-                // else
-                // {
-                //     printf("Invalid choice. Try again.\n");
-                // }
+                //display menu coresponsing to each user mode
             }
         }
     }
@@ -174,7 +150,40 @@ void _register()
     {
         printf("This username already existed!!!\n");
     } else {
-        perror("The server terminated prematurely");
+        perror(recvline);
         exit(4);
     }
+}
+
+int login (string *user)
+{
+    char username[30], password[30];
+    // string username, password;
+    char sendline[MAXLINE], recvline[MAXLINE];
+
+    cout << "Enter your username: ";
+    cin >> username;
+    cout << "Enter your password: ";
+    cin >> password;
+
+    // store values in sendline
+    sprintf(sendline, "%d\n%s %s\n", LOGIN, username, password);
+    // send request to server with protocol: "LOGIN\n<username> <password>\n"
+    send (socketfd, sendline, strlen(sendline), 0);
+    // eg.: 2linhnt 123
+
+    recv(socketfd, recvline, MAXLINE, 0);
+    int auth = recvline[0] - '0';
+    if (auth == BUYER || auth == SALER || auth == ADMIN){
+        printf("You have logged in successfully with %s account!\n", (auth==BUYER?"buyer":(auth==SALER?"saler":"admin")));
+        *user = username;
+    }
+    else if (auth == FAIL)
+    {
+        printf("Wrong username or password!!!\n");
+    } else {
+        perror(recvline);
+        exit(4);
+    }
+    return auth;
 }

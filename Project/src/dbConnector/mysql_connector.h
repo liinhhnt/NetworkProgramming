@@ -24,6 +24,7 @@ public:
     bool createTableIfNotExists(const string& createTableQuery);
     bool insertRecords(const string& insertQuery);
     void selectAllRecords(const string& selectQuery);
+    int checkRoleUser(const string& countQuery);
     void disconnect();
 };
 

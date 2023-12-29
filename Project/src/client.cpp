@@ -16,6 +16,7 @@ int socketfd;
 
 void connectToServer(char *ip);
 void displayMenu();
+void displayUserMenu(string *username);
 int login (string *username);
 void _register();
 
@@ -119,9 +120,29 @@ void displayMenu()
             else
             {
                 //display menu coresponsing to each user mode
+                switch (loggedIn)
+                {
+                    case BUYER:
+                        displayUserMenu(&username);
+                        break;
+                    case SALER:
+                        // Implement code here
+                        break;
+                    case ADMIN:
+                        // Implement code here
+                        break;
+                    default:
+                        printf("[-]Some error in get role of user!\n");
+                        exit(1);
+                }
             }
         }
     }
+}
+
+void displayUserMenu(string *username)
+{
+    
 }
 
 void _register()

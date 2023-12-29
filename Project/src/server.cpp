@@ -86,14 +86,12 @@ int main(int argc, char **argv)
 
                 int cmd = 0;
 
-                std::istringstream iss(buf); 
-                char digit;                  
-                while (iss >> digit)
+                for (int i=0; i<strlen(buf); i++)
                 {
+                    char digit = buf[i];
                     if (digit == '\n') break;
-                    cmd = cmd * 10 + (digit - '0');
+                    cmd = cmd * 10 + (int)(digit - '0');
                 }
-
                 switch (cmd)
                 {
                 case REGISTER:

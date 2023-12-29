@@ -226,3 +226,5 @@ INSERT INTO users (username, password, role) VALUES
     ('Ngoc Tran', '123', 'buyer'),
     ('Linh', '123', 'saler'),
     ('admin', 'adminpass', 'admin');
+
+SELECT count(*) FROM users WHERE username = "user7" AND password = "123";

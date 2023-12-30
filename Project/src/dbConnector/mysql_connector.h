@@ -25,6 +25,7 @@ public:
     bool insertRecords(const string& insertQuery);
     void selectAllRecords(const string& selectQuery);
     int checkRoleUser(const string& countQuery);
+    void getListMovies(struct MovieList *movieList, const string& query);
     void disconnect();
 };
 

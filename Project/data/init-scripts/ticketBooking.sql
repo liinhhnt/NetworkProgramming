@@ -8,7 +8,7 @@ CREATE TABLE types (
     PRIMARY KEY (typeId)
 );
 
-CREATE TABLE movies (
+CREATE TABLE movies (   
     movieId INT NOT NULL AUTO_INCREMENT,
     movieName VARCHAR(255) NOT NULL,
     typeId INT,

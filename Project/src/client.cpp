@@ -12,19 +12,21 @@
 
 using namespace std;
 
-int socketfd;
+int socketfd, loggedIn;
 
 void connectToServer(char *ip);
 void displayMenu();
 void displayUserMenu(string *username);
 int login (string *username);
 void _register();
+void searchMovie();
+void browseMovie();
+void bookTicket();
+void logout();
 
 int main(int argc, char **argv)
 {
-    int choice = 0, re;
-    char uname[MAXLINE];
-    char sendline[MAXLINE], recvline[MAXLINE];
+    loggedIn = 0;
     if (argc != 2)
     {
         fprintf(stderr, "Usage: %s <server_address>\n", argv[0]);
@@ -34,22 +36,6 @@ int main(int argc, char **argv)
     connectToServer(argv[1]);
 
     displayMenu();
-
-    // while (fgets(sendline, MAXLINE, stdin) != NULL)
-    // {
-    //     send(socketfd, sendline, strlen(sendline), 0);
-    //     if (recv(socketfd, recvline, MAXLINE, 0) == 0)
-    //     {
-    //         // error: server terminated prematurely
-    //         perror("The server terminated prematurely");
-    //         exit(4);
-    //     }
-    //     std::cout << "[+]String received from the server: ";
-    //     fputs(recvline, stdout);
-    //     memset(sendline, 0, sizeof(sendline));
-    //     memset(recvline, 0, sizeof(recvline));
-    // }
-    // exit(0);
     return 0;
 }
 
@@ -80,75 +66,99 @@ void connectToServer(char *ip)
 
 void displayMenu()
 {
-    for (;;)
+    string username;
+    while (1)
     {
-        int loggedIn = 0;
-        string username;
-        while (1)
+        if (!loggedIn)
         {
-            if (!loggedIn)
+            printf("\n====================================\n");
+            printf("Welcome to Online Movie Ticket Reservation Application\n");
+            printf("1. Register\n");
+            printf("2. Login\n");
+            printf("3. Exit\n");
+            printf("Enter your choice: ");
+
+            string choice;
+            cin >> choice;
+
+            switch (choice[0])
             {
-                printf("\n====================================\n");
-                printf("Welcome to Online Movie Ticket Reservation Application\n");
-                printf("1. Register\n");
-                printf("2. Login\n");
-                printf("3. Exit\n");
-                printf("Enter your choice: ");
+            case '1':
+                _register();
+                break;
 
-                string choice;
-                cin >> choice;
+            case '2':
+                loggedIn = login(&username);
+                break;
 
-                switch (choice[0])
-                {
-                case '1':
-                    _register();
+            case '3':
+                printf("Goodbye!\n");
+                exit(0);
+                break;
+            default:
+                printf("Invalid choice. Try again.\n");
+                break;
+            }
+            printf("-----------------------------\n");
+        }
+        else
+        {
+            //display menu coresponsing to each user mode
+            switch (loggedIn)
+            {
+                case BUYER:
+                    displayUserMenu(&username);
                     break;
-
-                case '2':
-                    loggedIn = login(&username);
+                case SALER:
+                    // Implement code here
                     break;
-
-                case '3':
-                    printf("Goodbye!\n");
-                    exit(0);
+                case ADMIN:
+                    // Implement code here
                     break;
                 default:
-                    printf("Invalid choice. Try again.\n");
-                    break;
-                }
+                    printf("[-]Some error in get role of user!\n");
+                    exit(1);
             }
-            else
-            {
-                //display menu coresponsing to each user mode
-                switch (loggedIn)
-                {
-                    case BUYER:
-                        displayUserMenu(&username);
-                        break;
-                    case SALER:
-                        // Implement code here
-                        break;
-                    case ADMIN:
-                        // Implement code here
-                        break;
-                    default:
-                        printf("[-]Some error in get role of user!\n");
-                        exit(1);
-                }
-            }
+            printf("-----------------------------\n");
         }
     }
 }
 
 void displayUserMenu(string *username)
 {
-    
+    cout << "Hello: " << *username << "\n What do you want to do?\n";
+    printf("1. Search movies by title\n");
+    printf("2. Browse movies by type, cinema location and showtime\n");
+    printf("3. Book movie ticket(s)\n");
+    printf("4. Logout\n");
+    printf("Enter your choice: ");
+
+    string choice;
+    cin >> choice;
+
+    switch (choice[0])
+    {
+    case '1':
+        searchMovie();
+        break;
+    case '2':
+        //browseMovie();
+        break;
+    case '3':
+        //bookTicket();
+        break;
+    case '4':
+        logout();
+        break;
+    default:
+        printf("Invalid choice. Try again.\n");
+        break;
+    }
 }
 
 void _register()
 {
     char username[30], password[30];
-    // string username, password;
     char sendline[MAXLINE], recvline[MAXLINE];
 
     cout << "Enter your username: ";
@@ -160,7 +170,6 @@ void _register()
     sprintf(sendline, "%d\n%s %s\n", REGISTER, username, password);
     // send request to server with protocol: "REGISTER\n<username> <password>\n"
     send (socketfd, sendline, strlen(sendline), 0);
-    // eg.: 1 linhnt 123
 
     recv(socketfd, recvline, MAXLINE, 0);
     int auth = recvline[0] - '0';
@@ -191,7 +200,6 @@ int login (string *user)
     sprintf(sendline, "%d\n%s %s\n", LOGIN, username, password);
     // send request to server with protocol: "LOGIN\n<username> <password>\n"
     send (socketfd, sendline, strlen(sendline), 0);
-    // eg.: 2linhnt 123
 
     recv(socketfd, recvline, MAXLINE, 0);
     int auth = recvline[0] - '0';
@@ -207,4 +215,32 @@ int login (string *user)
         exit(4);
     }
     return auth;
+}
+
+void logout()
+{
+    loggedIn = 0;
+    printf("Logged out successfully.\n\n");
+}
+
+void searchMovie()
+{
+    char title[255], sendline[MAXLINE], recvline[MAXLINE];
+    int n;
+
+    cout << "Enter the movie title you want to search:\n";
+    cin >> title;
+
+    sprintf(sendline, "%d\n%s\n", SEARCH, title);;
+    send (socketfd, sendline, strlen(sendline), 0);
+
+    while ((n = recv(socketfd, recvline, MAXLINE, 0)) > 0) {
+            if (strcmp(recvline, "End")) {
+                printf("%s", recvline);
+                memset(recvline, 0, sizeof(recvline));
+            } else {
+                memset(recvline, 0, sizeof(recvline));
+                break;
+            }
+        }
 }

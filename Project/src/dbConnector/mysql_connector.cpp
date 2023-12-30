@@ -1,4 +1,6 @@
 #include "mysql_connector.h"
+#include "../DBstruct.h"
+#include <string.h>
 
 MySQLOperations::MySQLOperations() {
     driver = get_driver_instance();
@@ -60,6 +62,38 @@ int MySQLOperations::checkRoleUser(const string& countQuery) {
     } catch (SQLException &e) {
         cerr << "Error: " << e.what() << endl;
         return 0;
+    }
+}
+
+void MySQLOperations::getListMovies(struct MovieList *movieList, const string& query)
+{
+    try {
+        sql::ResultSet *res = stmt->executeQuery(query);
+        int movieListSize = movieList->size;
+        while (res->next()) {
+            if (movieList->movies == NULL) {
+                movieList->movies = (struct Movie*)malloc(sizeof(struct Movie));
+            } else {
+                movieList->movies = (struct Movie*) realloc(movieList->movies, (movieListSize + 1)*sizeof(struct Movie));
+            }
+            if (movieList->movies == NULL) {
+                fprintf(stderr, "Memory allocation failed.\n");
+                exit(1);
+            }
+            movieList->movies[movieListSize].movieId = res->getInt("movieId");
+            strncpy(movieList->movies[movieListSize].movieName, res->getString("movieName").c_str(), sizeof(movieList->movies[movieListSize].movieName) - 1);
+            movieList->movies[movieListSize].movieName[sizeof(movieList->movies[movieListSize].movieName) - 1] = '\0';
+            strncpy(movieList->movies[movieListSize].typeName, res->getString("typeName").c_str(), sizeof(movieList->movies[movieListSize].typeName) - 1);
+            movieList->movies[movieListSize].typeName[sizeof(movieList->movies[movieListSize].typeName) - 1] = '\0';
+            strncpy(movieList->movies[movieListSize].duration, res->getString("duration").c_str(), sizeof(movieList->movies[movieListSize].duration) - 1);
+            movieList->movies[movieListSize].duration[sizeof(movieList->movies[movieListSize].duration) - 1] = '\0';
+            strncpy(movieList->movies[movieListSize].describtion, res->getString("description").c_str(), sizeof(movieList->movies[movieListSize].describtion) - 1);
+            movieList->movies[movieListSize].describtion[sizeof(movieList->movies[movieListSize].describtion) - 1] = '\0';
+            movieList->size = ++movieListSize;
+        }
+        delete res;
+    } catch (SQLException &e) {
+        cerr << "Error selecting records: " << e.what() << endl;
     }
 }
 

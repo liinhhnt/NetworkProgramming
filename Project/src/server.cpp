@@ -10,6 +10,7 @@
 #include <signal.h>
 #include "dbConnector/mysql_connector.h"
 #include "enums.h"
+#include "DBstruct.h"
 
 #define MAXLINE 4096   // max text line length
 #define SERV_PORT 3000 // port
@@ -26,6 +27,7 @@ void log_recv_msg(string client_ip, int client_port, string buf);
 void log_send_msg(int connfd, string client_ip, int client_port, char response[]);
 int _register(MySQLOperations *mysqlOps, string username, string password);
 int login(MySQLOperations *mysqlOps, string username, string password);
+void searchMovie(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, string title);
 
 int main(int argc, char **argv)
 {
@@ -86,14 +88,12 @@ int main(int argc, char **argv)
 
                 int cmd = 0;
 
-                std::istringstream iss(buf); 
-                char digit;                  
-                while (iss >> digit)
+                for (int i=0; i<strlen(buf); i++)
                 {
+                    char digit = buf[i];
                     if (digit == '\n') break;
-                    cmd = cmd * 10 + (digit - '0');
+                    cmd = cmd * 10 + (int)(digit - '0');
                 }
-
                 switch (cmd)
                 {
                 case REGISTER:
@@ -130,6 +130,22 @@ int main(int argc, char **argv)
                     {
                         printf("[-]Invalid login protocol! %s\n", buf);
                         sprintf(response, "Invalid login protocol!\n");
+                        log_send_msg(connfd, client_ip, client_port, response);
+                    }
+                    break;
+                }
+                case SEARCH:
+                {
+                    char title[255], response[50];
+                    int noargs = sscanf(buf, "%d\n%s\n", &cmd, title);
+                    if (noargs == 2)
+                    {
+                        searchMovie(connfd, client_ip,client_port, &mysqlOps, title);
+                    }
+                    else
+                    {
+                        printf("[-]Invalid search protocol! %s\n", buf);
+                        sprintf(response, "Invalid search protocol!\n");
                         log_send_msg(connfd, client_ip, client_port, response);
                     }
                     break;
@@ -237,4 +253,44 @@ int login(MySQLOperations *mysqlOps, string username, string password)
         return res;
     else
         return FAIL;
+}
+
+void searchMovie(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, string title)
+{
+     // Chuyển chuỗi title về dạng chữ thường
+    std::transform(title.begin(), title.end(), title.begin(), ::tolower);
+    string sql = "SELECT * FROM movies m JOIN types t WHERE LOWER(movieName) like '%" + title + "%' and m.typeId=t.typeId;";
+    cout << "SQL query: " << sql << '\n';
+
+    struct MovieList movieList;
+    initMovieList(&movieList);
+    (*mysqlOps).getListMovies(&movieList, sql);
+
+    char sendline[MAXLINE];
+    char END[10] = "End";
+
+    printf("[+]Begin send response...\n");
+
+    send(connfd, "===============================================================================================================================================\n", MAXLINE, 0);
+    sprintf(sendline, "%-10s | %-25s | %-10s | %-10s | %-75s |\n", "MovieId", "Movie name", "Type", "Duration", "Description");
+    log_send_msg(connfd, client_ip, client_port, sendline);
+    // send(connfd, sendline, MAXLINE, 0);
+    memset(sendline, 0, strlen(sendline));
+    send(connfd, "-----------------------------------------------------------------------------------------------------------------------------------------------|\n", MAXLINE, 0);
+    for (int i = 0; i < movieList.size; i++) {
+        struct Movie movie = movieList.movies[i];
+            sprintf(sendline, "%-10d | %-25s | %-10s | %-10s | %-75s |\n",
+                movie.movieId, movie.movieName, movie.typeName, movie.duration, movie.describtion);
+            // send(connfd, sendline, MAXLINE, 0);
+            log_send_msg(connfd, client_ip, client_port, sendline);
+            memset(sendline, 0, MAXLINE);
+    }
+    send(connfd, "===============================================================================================================================================\n", MAXLINE, 0);
+    usleep(500000);
+    // send(connfd, END, strlen(END), 0);
+    sprintf(sendline, "%s", END);
+    log_send_msg(connfd, client_ip, client_port, sendline);
+    memset(sendline, 0, strlen(sendline));
+    printf("[+]Send completely!\n");
+    freeMovieList(&movieList);
 }

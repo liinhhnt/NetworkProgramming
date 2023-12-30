@@ -23,9 +23,11 @@ public:
     bool connect(const string& ipAddress, const string& username, const string& password, const string& database);
     bool createTableIfNotExists(const string& createTableQuery);
     bool insertRecords(const string& insertQuery);
-    void selectAllRecords(const string& selectQuery);
     int checkRoleUser(const string& countQuery);
     void getListMovies(struct MovieList *movieList, const string& query);
+    void getListTypes(struct TypeList *typeList, const string& query);
+    void getListCinemas(struct CinemaList *cinemaList, const string& query);
+    void getListShowTimes(struct ShowTimeList *showTimeList, const std::string& query);
     void disconnect();
 };
 

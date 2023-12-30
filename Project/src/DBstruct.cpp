@@ -14,38 +14,39 @@ void freeTypeList (struct TypeList *typeList) {
   typeList->size = 0;
 }
 
-void initMovieList (struct MovieList* movieList) {
-  movieList->movies = NULL;
-  movieList->size = 0;
+
+void initShowTimeList (struct ShowTimeList* showtimeList) {
+  showtimeList->showTimes = NULL;
+  showtimeList->size = 0;
 }
 
-void freeMovieList (struct MovieList *movieList) {
-  if (movieList->movies != NULL) {
-    free(movieList->movies);
+void freeShowTimeList (struct ShowTimeList *showtimeList) {
+  if (showtimeList->showTimes != NULL) {
+    free(showtimeList->showTimes);
   }
-  movieList->size = 0;
+  showtimeList->size = 0;
 }
 
-void initBrowse (struct Browse* browse) {
-  browse->showTimes = NULL;
-  browse->noShowTime = 0;
+void initCinemaList (struct CinemaList* cinemaList) {
+  cinemaList->cinemas = NULL;
+  cinemaList->size = 0;
 }
 
-void freeBrowse (struct Browse *browse) {
-  if (browse->showTimes != NULL) {
-    free(browse->showTimes);
+void freeCinemaList (struct CinemaList *cinemaList) {
+  if (cinemaList->cinemas != NULL) {
+    free(cinemaList->cinemas);
   }
-  browse->noShowTime = 0;
+  cinemaList->size = 0;
 }
 
-void initBrowseList (struct BrowseList* browseList) {
-  browseList->browses = NULL;
-  browseList->size = 0;
+void initMovieList(struct MovieList* movieList) {
+    movieList->movies = NULL;
+    movieList->size = 0;
 }
 
-void freeBrowseList (struct BrowseList *browseList) {
-  if (browseList->browses != NULL) {
-    free(browseList->browses);
-  }
-  browseList->size = 0;
+void freeMovieList(struct MovieList* movieList) {
+    if (movieList->movies != NULL) {
+        free(movieList->movies);
+    }
+    movieList->size = 0;
 }

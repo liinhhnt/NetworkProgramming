@@ -8,7 +8,7 @@ CREATE TABLE types (
     PRIMARY KEY (typeId)
 );
 
-CREATE TABLE movies (   
+CREATE TABLE movies (
     movieId INT NOT NULL AUTO_INCREMENT,
     movieName VARCHAR(255) NOT NULL,
     typeId INT,
@@ -221,10 +221,20 @@ VALUES
     ('Sunday', '14:30', '17:00', 9, 2, 9),
     ('Saturday', '17:00', '20:00', 10, 3, 11);
 
+INSERT INTO showtimes (weekday, startTime, endTime, movieId, cinemaId, roomId)
+VALUES 
+    ('Monday', '20:30', '23:00', 1, 1, 1);
+    
 INSERT INTO users (username, password, role) VALUES
     ('Liinhh NT', '123', 'buyer'),
     ('Ngoc Tran', '123', 'buyer'),
     ('Linh', '123', 'saler'),
     ('admin', 'adminpass', 'admin');
 
-SELECT count(*) FROM users WHERE username = "user7" AND password = "123";
+use ticketBooking;
+SELECT * FROM users WHERE username = 'user7' AND password = '123';
+SELECT * FROM users WHERE username = 'user12' AND password = '123';
+
+use ticketBooking;
+SELECT * from movies m join types t where movieName like '%ark%' and m.typeId=t.typeId;
+

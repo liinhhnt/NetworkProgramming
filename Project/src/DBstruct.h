@@ -30,27 +30,39 @@ void initMovieList (struct MovieList* movieList);
 void freeMovieList (struct MovieList *movieList);
 
 struct ShowTime {
+  int movieId;
+  int showTimeId;
+  int roomId;
+  char seatMap[255];
+  int noOfEmptySeats;
+  char movieName[255];
+  char typeName[255];
+  char cinema[255];
   char weekday[255];
   char startTime[255];
   char endTime[255];
 };
 
-struct Browse {
-  char movieName[255];
-  char typeName[255];
-  char cinema[255];
+struct ShowTimeList {
   struct ShowTime *showTimes;
-  int noShowTime = 0;
-};
-
-struct BrowseList {
-  struct Browse *browses;
   int size;
 };
 
-void initBrowse (struct Browse* browse);
-void initBrowseList (struct BrowseList* browseList);
-void freeBrowse (struct Browse* browse);
-void freeBrowseList (struct BrowseList* browseList);
+void initShowTimeList (struct ShowTimeList* showTimeList);
+void freeShowTimeList (struct ShowTimeList* ShowTimeList);
+
+struct Cinema {
+  int cinemaId;
+  char cinemaName[255];
+  char location[255];
+};
+struct CinemaList {
+  struct Cinema *cinemas;
+  int size;
+};
+
+void initCinemaList (struct CinemaList* cinemaList);
+void freeCinemaList (struct CinemaList *cinemaList) ;
+
 
 #endif

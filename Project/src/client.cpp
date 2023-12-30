@@ -19,6 +19,7 @@ void displayMenu();
 void displayUserMenu(string *username);
 int login (string *username);
 void _register();
+void displayReceiveMessage(int *socketfd);
 void searchMovie();
 void browseMovie();
 void bookTicket();
@@ -142,7 +143,7 @@ void displayUserMenu(string *username)
         searchMovie();
         break;
     case '2':
-        //browseMovie();
+        browseMovie();
         break;
     case '3':
         //bookTicket();
@@ -223,6 +224,21 @@ void logout()
     printf("Logged out successfully.\n\n");
 }
 
+void displayReceiveMessage(int *socketfd)
+{
+    char recvline[MAXLINE];
+    int n;
+    while ((n = recv(*socketfd, recvline, MAXLINE, 0)) > 0) {
+        if (strcmp(recvline, "End")) {
+            printf("%s", recvline);
+            memset(recvline, 0, sizeof(recvline));
+        } else {
+            memset(recvline, 0, sizeof(recvline));
+            break;
+        }
+    }
+}
+
 void searchMovie()
 {
     char title[255], sendline[MAXLINE], recvline[MAXLINE];
@@ -231,16 +247,61 @@ void searchMovie()
     cout << "Enter the movie title you want to search:\n";
     cin >> title;
 
-    sprintf(sendline, "%d\n%s\n", SEARCH, title);;
+    sprintf(sendline, "%d\n%s\n", SEARCH, title);
     send (socketfd, sendline, strlen(sendline), 0);
 
-    while ((n = recv(socketfd, recvline, MAXLINE, 0)) > 0) {
-            if (strcmp(recvline, "End")) {
-                printf("%s", recvline);
-                memset(recvline, 0, sizeof(recvline));
-            } else {
-                memset(recvline, 0, sizeof(recvline));
-                break;
-            }
+    displayReceiveMessage(&socketfd);
+}
+
+void browseMovie()
+{
+    int n;
+    char typeId[25], cinemaId[25], weekday[25], sendline[MAXLINE], recvline[MAXLINE];
+    
+    // send request to get list of movie types
+    sprintf(sendline, "%d\n", GET_LIST_TYPE);
+    send (socketfd, sendline, strlen(sendline), 0);
+    memset(sendline, 0, sizeof(sendline));
+
+    // display list of movie types
+    displayReceiveMessage(&socketfd);
+
+    cout << "Which movie type do you want to browse?\nEnter a specific typeId or enter ALL to browse all type:\n";
+    cin >> typeId;
+
+    // send request to get list of cinemas
+    sprintf(sendline, "%d\n", GET_LIST_CINEMA);
+    send (socketfd, sendline, strlen(sendline), 0);
+    memset(sendline, 0, sizeof(sendline));
+
+    // display list of cinemas
+    displayReceiveMessage(&socketfd);
+
+    cout << "Which cinema do you want to browse?\nEnter a specific cinemaId or enter ALL to browse all cinemas:\n";
+    cin >> cinemaId;
+    
+    // display list of weekday
+    cout << "What weekday do you want to browse movies?\nEnter the weekday (e.g., Monday, Tuesday) or ALL if you want to browse all days\n";
+    while (true) {
+        cin >> weekday;
+        // Convert the input to lowercase for case-insensitive comparison
+        std::transform(std::begin(weekday), std::end(weekday) - 1, std::begin(weekday), [](unsigned char c) { return std::tolower(c); });
+
+        if (std::string(weekday) == "monday" || std::string(weekday) == "tuesday" || std::string(weekday) == "wednesday" ||
+            std::string(weekday) == "thursday" || std::string(weekday) == "friday" || std::string(weekday) == "saturday" ||
+            std::string(weekday) == "sunday" || std::string(weekday) == "all") {
+            weekday[0]-=32; // convert first character to uppercase
+            break; // Input is valid, exit the loop
+        } else {
+            std::cout << "Invalid input. Please enter a valid weekday (e.g., Monday, Tuesday) or ALL\n";
         }
+    }
+
+
+    // send request to browse movie by type, cinema, weekday
+    sprintf(sendline, "%d\n%s %s %s", BROWSE, typeId, cinemaId, weekday);
+    send (socketfd, sendline, strlen(sendline), 0);
+
+    // display list movies matched
+    displayReceiveMessage(&socketfd);
 }

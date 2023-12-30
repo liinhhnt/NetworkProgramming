@@ -97,31 +97,108 @@ void MySQLOperations::getListMovies(struct MovieList *movieList, const string& q
     }
 }
 
-void MySQLOperations::selectAllRecords(const string& selectQuery) {
+void MySQLOperations::getListTypes(struct TypeList *typeList, const string&query)
+{
     try {
-        sql::ResultSet *res = stmt->executeQuery(selectQuery);
-        sql::ResultSetMetaData *metaData = res->getMetaData();
-        
-        int columnCount = metaData->getColumnCount();
+        sql::ResultSet *res = stmt->executeQuery(query);
+        int typeListSize = typeList->size;
         while (res->next()) {
-            for (int i = 1; i <= columnCount; ++i) {
-                cout << metaData->getColumnLabel(i) << ": ";
-                switch (metaData->getColumnType(i)) {
-                    case sql::DataType::INTEGER:
-                        cout << res->getInt(i) << ", ";
-                        break;
-                    case sql::DataType::VARCHAR:
-                    case sql::DataType::CHAR:
-                        cout << res->getString(i) << ", ";
-                        break;
-                    // Handle other data types as needed
-                    default:
-                        cout << res->getString(i) << ", ";
-                        break;
-                }
+            if (typeList->types == NULL) {
+                typeList->types = (struct Type*)malloc(sizeof(struct Type));
+            } else {
+                typeList->types = (struct Type*) realloc(typeList->types, (typeListSize + 1)*sizeof(struct Type));
             }
-            cout << endl;
+            if (typeList->types == NULL) {
+                fprintf(stderr, "Memory allocation failed.\n");
+                exit(1);
+            }
+            typeList->types[typeListSize].typeId = res->getInt("typeId");
+            strncpy(typeList->types[typeListSize].typeName, res->getString("typeName").c_str(), sizeof(typeList->types[typeListSize].typeName) - 1);
+            typeList->types[typeListSize].typeName[sizeof(typeList->types[typeListSize].typeName) - 1] = '\0';
+            typeList->size = ++typeListSize;
         }
+        delete res;
+    } catch (SQLException &e) {
+        cerr << "Error selecting records: " << e.what() << endl;
+    }
+}
+
+void MySQLOperations::getListCinemas(struct CinemaList *cinemaList, const string& query)
+{
+    try {
+        sql::ResultSet *res = stmt->executeQuery(query);
+        int cinemaListSize = cinemaList->size;
+        while (res->next()) {
+            if (cinemaList->cinemas == NULL) {
+                cinemaList->cinemas = (struct Cinema*)malloc(sizeof(struct Cinema));
+            } else {
+                cinemaList->cinemas = (struct Cinema*) realloc(cinemaList->cinemas, (cinemaListSize + 1)*sizeof(struct Cinema));
+            }
+            if (cinemaList->cinemas == NULL) {
+                fprintf(stderr, "Memory allocation failed.\n");
+                exit(1);
+            }
+            cinemaList->cinemas[cinemaListSize].cinemaId = res->getInt("cinemaId");
+            strncpy(cinemaList->cinemas[cinemaListSize].cinemaName, res->getString("cinemaName").c_str(), sizeof(cinemaList->cinemas[cinemaListSize].cinemaName) - 1);
+            cinemaList->cinemas[cinemaListSize].cinemaName[sizeof(cinemaList->cinemas[cinemaListSize].cinemaName) - 1] = '\0';
+            strncpy(cinemaList->cinemas[cinemaListSize].location, res->getString("location").c_str(), sizeof(cinemaList->cinemas[cinemaListSize].location) - 1);
+            cinemaList->cinemas[cinemaListSize].location[sizeof(cinemaList->cinemas[cinemaListSize].location) - 1] = '\0';
+            cinemaList->size = ++cinemaListSize;
+        }
+        delete res;
+    } catch (SQLException &e) {
+        cerr << "Error selecting records: " << e.what() << endl;
+    }
+}
+
+int getNullableInt(sql::ResultSet* res, const std::string& columnName, int defaultValue = 0) {
+        if (!res->isNull(columnName)) {
+            return res->getInt(columnName);
+        } else {
+            return defaultValue;
+        }
+    }
+
+void MySQLOperations::getListShowTimes(struct ShowTimeList *showTimeList, const std::string& query) {
+    try {
+        sql::ResultSet *res = stmt->executeQuery(query);
+
+        while (res->next()) {
+            struct ShowTime showTime;
+            showTime.showTimeId = getNullableInt(res, "showTimeId", 0);
+            showTime.movieId = getNullableInt(res, "movieId", 0);
+            showTime.roomId = getNullableInt(res, "roomId", 0);
+            showTime.noOfEmptySeats = getNullableInt(res, "noOfEmptySeats", 0); 
+            
+            strncpy(showTime.seatMap, res->getString("seatMap").c_str(), sizeof(showTime.seatMap) - 1);
+            showTime.seatMap[sizeof(showTime.seatMap) - 1] = '\0';
+            
+            strncpy(showTime.movieName, res->getString("movieName").c_str(), sizeof(showTime.movieName) - 1);
+            showTime.movieName[sizeof(showTime.movieName) - 1] = '\0';
+            
+            strncpy(showTime.typeName, res->getString("typeName").c_str(), sizeof(showTime.typeName) - 1);
+            showTime.typeName[sizeof(showTime.typeName) - 1] = '\0';
+            
+            strncpy(showTime.cinema, res->getString("cinemaName").c_str(), sizeof(showTime.cinema) - 1);
+            showTime.cinema[sizeof(showTime.cinema) - 1] = '\0';
+            
+            strncpy(showTime.weekday, res->getString("weekday").c_str(), sizeof(showTime.weekday) - 1);
+            showTime.weekday[sizeof(showTime.weekday) - 1] = '\0';
+            
+            strncpy(showTime.startTime, res->getString("startTime").c_str(), sizeof(showTime.startTime) - 1);
+            showTime.startTime[sizeof(showTime.startTime) - 1] = '\0';
+            
+            strncpy(showTime.endTime, res->getString("endTime").c_str(), sizeof(showTime.endTime) - 1);
+            showTime.endTime[sizeof(showTime.endTime) - 1] = '\0';
+            
+            showTimeList->showTimes = (struct ShowTime*)realloc(showTimeList->showTimes, (showTimeList->size + 1) * sizeof(struct ShowTime));
+            if (showTimeList->showTimes == NULL) {
+                fprintf(stderr, "Memory allocation failed.\n");
+                exit(1);
+            }
+            showTimeList->showTimes[showTimeList->size++] = showTime;
+        }
+
         delete res;
     } catch (SQLException &e) {
         cerr << "Error selecting records: " << e.what() << endl;

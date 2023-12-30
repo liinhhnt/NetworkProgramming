@@ -11,16 +11,17 @@ enum UserActions {
     REGISTER = 1,
     LOGIN = 2,
     SEARCH = 3,
-    BROWSER = 4,
+    BROWSE = 4,
     RESERVE = 5,
     ADD_MOVIE = 6,
     ANNOUNCE_SHOWING = 7,
     GET_LIST_MOVIES = 8,
-    GET_LIST_THEATER = 9, 
-    GET_LIST_ROOMS_OR_THEATER = 10,
+    GET_LIST_CINEMA = 9, 
+    GET_LIST_ROOMS_OF_CINEMA = 10,
     GET_LIST_SHOWID = 11,
     MODIFY_SHOWING = 12,
-    CREATE_USER = 13
+    CREATE_USER = 13,
+    GET_LIST_TYPE = 14,
 };
 
 enum AuthCode {

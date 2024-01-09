@@ -19,11 +19,11 @@ void displayMenu();
 void displayUserMenu(string *username);
 int login(string *username);
 void _register();
-void displayReceiveMessage(int *socketfd);
+void displayReceiveMessage(int *socketfd, int *fail);
 void searchMovie();
 void browseMovie();
 void bookTicket();
-void reserve(int showtimeId);
+void reserve(int showtimeId, int movieId);
 bool isInteger(const string &s);
 bool isValidTicketFormat(string tickets);
 void logout();
@@ -233,15 +233,20 @@ void logout()
     printf("Logged out successfully.\n\n");
 }
 
-void displayReceiveMessage(int *socketfd)
+void displayReceiveMessage(int *socketfd, int *fail)
 {
     char recvline[MAXLINE];
     int n;
     while ((n = recv(*socketfd, recvline, MAXLINE, 0)) > 0)
     {
+        if (strcmp(recvline, "FAIL") == 0)
+        {
+            (*fail) = -1;
+        }
         if (strcmp(recvline, "End"))
         {
-            printf("%s", recvline);
+            if (!(*fail))
+                printf("%s", recvline);
             memset(recvline, 0, sizeof(recvline));
         }
         else
@@ -263,7 +268,8 @@ void searchMovie()
     sprintf(sendline, "%d\n%s\n", SEARCH, title);
     send(socketfd, sendline, strlen(sendline), 0);
 
-    displayReceiveMessage(&socketfd);
+    int fail = 0;
+    displayReceiveMessage(&socketfd, &fail);
 }
 
 void browseMovie()
@@ -277,7 +283,8 @@ void browseMovie()
     memset(sendline, 0, sizeof(sendline));
 
     // display list of movie types
-    displayReceiveMessage(&socketfd);
+    int fail = 0;
+    displayReceiveMessage(&socketfd, &fail);
 
     cout << "Which movie type do you want to browse?\nEnter a specific typeId or enter ALL to browse all type:\n";
     cin >> typeId;
@@ -291,7 +298,8 @@ void browseMovie()
     memset(sendline, 0, sizeof(sendline));
 
     // display list of cinemas
-    displayReceiveMessage(&socketfd);
+    fail = 0;
+    displayReceiveMessage(&socketfd, &fail);
 
     cout << "Which cinema do you want to browse?\nEnter a specific cinemaId or enter ALL to browse all cinemas:\n";
     cin >> cinemaId;
@@ -325,7 +333,8 @@ void browseMovie()
     send(socketfd, sendline, strlen(sendline), 0);
 
     // display list movies matched
-    displayReceiveMessage(&socketfd);
+    fail = 0;
+    displayReceiveMessage(&socketfd, &fail);
 }
 
 bool isInteger(const string &s)
@@ -353,17 +362,23 @@ bool isValidTicketFormat(string tickets)
     return true;
 }
 
-void reserve(int showtimeId)
+void reserve(int showtimeId, int movieId)
 {
     char sendline[MAXLINE], recvline[MAXLINE];
     int noTickets = -1;
     // send request to detail info of showtime
-    sprintf(sendline, "%d\n%d\n", GET_SHOWTIME_INFO, showtimeId);
+    sprintf(sendline, "%d\n%d %d\n", GET_SHOWTIME_INFO, showtimeId, movieId);
     send(socketfd, sendline, strlen(sendline), 0);
     memset(sendline, 0, sizeof(sendline));
 
     // display detail of showtime
-    displayReceiveMessage(&socketfd);
+    int fail = 0;
+    displayReceiveMessage(&socketfd, &fail);
+    if (fail == -1)
+    {
+        cout << "Invalid showtimeId\n";
+        return;
+    }
 
     // get list of tickets that buyer want to reserve
     while (true)
@@ -373,7 +388,8 @@ void reserve(int showtimeId)
         cin >> noTicketsStr;
         if (isInteger(noTicketsStr))
             noTickets = stoi(noTicketsStr);
-        if (noTickets >= 0) {
+        if (noTickets >= 0)
+        {
             break;
             cin.ignore();
         }
@@ -390,7 +406,8 @@ void reserve(int showtimeId)
         {
             string tickets;
             cout << "Enter the ticket IDs separated by space (Eg.: A1 B2 C3):\n";
-            if (trick) cin.ignore(), trick--; // Clear input buffer            
+            if (trick)
+                cin.ignore(), trick--; // Clear input buffer
             getline(cin, tickets);
             if (!isValidTicketFormat(tickets))
             {
@@ -411,7 +428,7 @@ void reserve(int showtimeId)
                 else if (auth == FAIL)
                 {
                     printf("Ticket booking was not successful, maybe the seat was booked by someone else or you type something wrong. Please try again!!!\n");
-                    reserve(showtimeId); // Retry booking process
+                    reserve(showtimeId, movieId); // Retry booking process
                 }
                 else
                 {
@@ -435,7 +452,9 @@ void bookTicket()
     memset(sendline, 0, sizeof(sendline));
 
     // display list of movie
-    displayReceiveMessage(&socketfd);
+    int fail = 0;
+
+    displayReceiveMessage(&socketfd, &fail);
 
     while (true)
     {
@@ -452,7 +471,14 @@ void bookTicket()
             memset(sendline, 0, sizeof(sendline));
 
             // display list of showtimes by movieId
-            displayReceiveMessage(&socketfd);
+            int fail = 0;
+
+            displayReceiveMessage(&socketfd, &fail);
+            if (fail)
+            {
+                cout << "Invalid movieId!\n";
+                return;
+            };
 
             while (true)
             {
@@ -462,7 +488,7 @@ void bookTicket()
                 if (isInteger(showtimeIdStr))
                 {
                     int showtimeId = stoi(showtimeIdStr);
-                    reserve(showtimeId);
+                    reserve(showtimeId, movieId);
                     break;
                 }
                 else

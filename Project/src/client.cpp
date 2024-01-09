@@ -19,7 +19,7 @@ void displayMenu();
 void displayUserMenu(string *username);
 int login(string *username);
 void _register();
-void displayReceiveMessage(int *socketfd, int *fail);
+void displayReceiveMessage(int *socketfd);
 void searchMovie();
 void browseMovie();
 void bookTicket();
@@ -233,20 +233,15 @@ void logout()
     printf("Logged out successfully.\n\n");
 }
 
-void displayReceiveMessage(int *socketfd, int *fail)
+void displayReceiveMessage(int *socketfd)
 {
     char recvline[MAXLINE];
     int n;
     while ((n = recv(*socketfd, recvline, MAXLINE, 0)) > 0)
     {
-        if (strcmp(recvline, "FAIL") == 0)
-        {
-            (*fail) = -1;
-        }
         if (strcmp(recvline, "End"))
         {
-            if (!(*fail))
-                printf("%s", recvline);
+            printf("%s", recvline);
             memset(recvline, 0, sizeof(recvline));
         }
         else
@@ -272,8 +267,7 @@ void searchMovie()
     int response = recvline[0] - '0';
     if (response == SUCCESS)
     {
-        int fail = 0;
-        displayReceiveMessage(&socketfd, &fail);
+        displayReceiveMessage(&socketfd);
     }
     else if (response == FAIL)
     {
@@ -301,8 +295,7 @@ void browseMovie()
     if (response == SUCCESS)
     {
         // display list of movie types
-        int fail = 0;
-        displayReceiveMessage(&socketfd, &fail);
+        displayReceiveMessage(&socketfd);
     }
     else if (response == FAIL)
     {
@@ -330,8 +323,7 @@ void browseMovie()
     if (response == SUCCESS)
     {
         // display list of cinemas
-        int fail = 0;
-        displayReceiveMessage(&socketfd, &fail);
+        displayReceiveMessage(&socketfd);
     }
     else if (response == FAIL)
     {
@@ -379,8 +371,7 @@ void browseMovie()
     if (response == SUCCESS)
     {
         // display list movies matched
-        int fail = 0;
-        displayReceiveMessage(&socketfd, &fail);
+        displayReceiveMessage(&socketfd);
     }
     else if (response == FAIL)
     {
@@ -432,8 +423,7 @@ void reserve(int showtimeId, int movieId)
     if (response == SUCCESS)
     {
         // display detail of showtime
-        int fail = 0;
-        displayReceiveMessage(&socketfd, &fail);
+        displayReceiveMessage(&socketfd);
     }
     else if (response == FAIL)
     {
@@ -522,8 +512,7 @@ void bookTicket()
     if (response == SUCCESS)
     {
         // display list of movies
-        int fail = 0;
-        displayReceiveMessage(&socketfd, &fail);
+        displayReceiveMessage(&socketfd);
     }
     else if (response == FAIL)
     {
@@ -555,8 +544,7 @@ void bookTicket()
             if (response == SUCCESS)
             {
                 // display list of showtimes
-                int fail = 0;
-                displayReceiveMessage(&socketfd, &fail);
+                displayReceiveMessage(&socketfd);
             }
             else if (response == FAIL)
             {

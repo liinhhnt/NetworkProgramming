@@ -342,9 +342,6 @@ void browseMovie()
         perror(recvline);
         exit(4);
     }
-    // // display list of cinemas
-    // fail = 0;
-    // displayReceiveMessage(&socketfd, &fail);
 
     cout << "Which cinema do you want to browse?\nEnter a specific cinemaId or enter ALL to browse all cinemas:\n";
     cin >> cinemaId;
@@ -449,14 +446,6 @@ void reserve(int showtimeId, int movieId)
         exit(4);
     }
 
-    // int fail = 0;
-    // displayReceiveMessage(&socketfd, &fail);
-    // if (fail == -1)
-    // {
-    //     cout << "Invalid showtimeId\n";
-    //     return;
-    // }
-
     // get list of tickets that buyer want to reserve
     while (true)
     {
@@ -547,10 +536,6 @@ void bookTicket()
         exit(4);
     }
 
-    // // display list of movie
-    // int fail = 0;
-    // displayReceiveMessage(&socketfd, &fail);
-
     while (true)
     {
         cout << "Which movie do you want to reserve?\nEnter a specific movieId:\n";
@@ -583,16 +568,6 @@ void bookTicket()
                 perror(recvline);
                 exit(4);
             }
-
-            // // display list of showtimes by movieId
-            // int fail = 0;
-
-            // displayReceiveMessage(&socketfd, &fail);
-            // if (fail)
-            // {
-            //     cout << "Invalid movieId!\n";
-            //     return;
-            // };
 
             while (true)
             {

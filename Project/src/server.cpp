@@ -364,7 +364,7 @@ void searchMovie(int connfd, string client_ip, int client_port, MySQLOperations 
 
     if (!movieList.size)
     {
-        response[0] = '0';
+        response[0] = '0' + FAIL;
         response[1] = '\0';
         log_send_msg(connfd, client_ip, client_port, response);
         return;
@@ -372,7 +372,7 @@ void searchMovie(int connfd, string client_ip, int client_port, MySQLOperations 
     else
     {
         printf("[+]Begin send response...\n");
-        response[0] = '1';
+        response[0] = '0' + SUCCESS;
         response[1] = '\0';
         log_send_msg(connfd, client_ip, client_port, response);
         sprintf(sendline, "Number of movies matched: %d\n", movieList.size);
@@ -415,7 +415,7 @@ void getListType(int connfd, string client_ip, int client_port, MySQLOperations 
 
     if (!typeList.size)
     {
-        response[0] = '0';
+        response[0] = '0' + FAIL;
         response[1] = '\0';
         log_send_msg(connfd, client_ip, client_port, response);
         return;
@@ -423,7 +423,7 @@ void getListType(int connfd, string client_ip, int client_port, MySQLOperations 
     else
     {
         printf("[+]Begin send response...\n");
-        response[0] = '1';
+        response[0] = '0' + SUCCESS;
         response[1] = '\0';
         log_send_msg(connfd, client_ip, client_port, response);
 
@@ -468,7 +468,7 @@ void getListCinema(int connfd, string client_ip, int client_port, MySQLOperation
 
     if (!cinemaList.size)
     {
-        response[0] = '0';
+        response[0] = '0' + FAIL;
         response[1] = '\0';
         log_send_msg(connfd, client_ip, client_port, response);
         return;
@@ -476,7 +476,7 @@ void getListCinema(int connfd, string client_ip, int client_port, MySQLOperation
     else
     {
         printf("[+]Begin send response...\n");
-        response[0] = '1';
+        response[0] = '0' + SUCCESS;
         response[1] = '\0';
         log_send_msg(connfd, client_ip, client_port, response);
 
@@ -528,7 +528,7 @@ void browseMovie(int connfd, string client_ip, int client_port, MySQLOperations 
 
     if (!browseList.size)
     {
-        response[0] = '0';
+        response[0] = '0' + FAIL;
         response[1] = '\0';
         log_send_msg(connfd, client_ip, client_port, response);
         return;
@@ -536,7 +536,7 @@ void browseMovie(int connfd, string client_ip, int client_port, MySQLOperations 
     else
     {
         printf("[+]Begin send response...\n");
-        response[0] = '1';
+        response[0] = '0' + SUCCESS;
         response[1] = '\0';
         log_send_msg(connfd, client_ip, client_port, response);
 
@@ -673,9 +673,9 @@ void getListShowtimeByMovieId(int connfd, string client_ip, int client_port, MyS
     char sendline[MAXLINE], response[10];
     char END[10] = "End";
 
-    if (!showtimeList.size)
+    if (!showtimeList.size)  // If no showtime matched, send FAIL to user
     {
-        response[0] = '0';
+        response[0] = '0' + FAIL;
         response[1] = '\0';
         log_send_msg(connfd, client_ip, client_port, response);
         return;
@@ -683,13 +683,10 @@ void getListShowtimeByMovieId(int connfd, string client_ip, int client_port, MyS
     else
     {
         printf("[+]Begin send response...\n");
-        response[0] = '1';
+        response[0] = '0' + SUCCESS; 
         response[1] = '\0';
         log_send_msg(connfd, client_ip, client_port, response);
 
-        // if (showtimeList.size == 0)
-        //     sprintf(sendline, "FAIL");
-        // else
         sprintf(sendline, "Number of showtimes for movieID %d: %d\n", movieId, showtimeList.size);
         log_send_msg(connfd, client_ip, client_port, sendline);
 
@@ -725,12 +722,12 @@ void getShowtimeInfo(int connfd, string client_ip, int client_port, MySQLOperati
     struct ShowTimeList showtimeList;
     initShowTimeList(&showtimeList);
     char response[10];
-    
+
     (*mysqlOps).getListShowTimes(&showtimeList, sql);
 
      if (!showtimeList.size)
     {
-        response[0] = '0';
+        response[0] = '0' + FAIL; // If no showtime matched, send FAIL to user
         response[1] = '\0';
         log_send_msg(connfd, client_ip, client_port, response);
         return;
@@ -738,12 +735,9 @@ void getShowtimeInfo(int connfd, string client_ip, int client_port, MySQLOperati
     else
     {
         printf("[+]Begin send response...\n");
-        response[0] = '1';
+        response[0] = '0' + SUCCESS;
         response[1] = '\0';
         log_send_msg(connfd, client_ip, client_port, response);
-    // if (showtimeList.size > 0)
-    // {
-    //     printf("[+]Begin send response...\n");
         send(connfd, "-----------------------------------------------------------------|\n", MAXLINE, 0);
         struct ShowTime showtime = showtimeList.showTimes[0];
         char sendline[MAXLINE];
@@ -753,14 +747,6 @@ void getShowtimeInfo(int connfd, string client_ip, int client_port, MySQLOperati
         convertSeatMapToClient(connfd, client_ip, client_port, showtime.seatMap);
         printf("[+]Send completely!\n");
     }
-    // else
-    // {
-    //     char response[] = "FAIL";
-    //     log_send_msg(connfd, client_ip, client_port, response);
-    //     memset(response, 0, strlen(response));
-    //     sprintf(response, "%s", "End");
-    //     log_send_msg(connfd, client_ip, client_port, response);
-    // }
     freeShowTimeList(&showtimeList);
 }
 
@@ -776,7 +762,7 @@ void reserveTicket(int connfd, string client_ip, int client_port, MySQLOperation
     char response[10];
       if (!showtimeList.size)
     {
-        response[0] = '0';
+        response[0] = '0' + FAIL;
         response[1] = '\0';
         log_send_msg(connfd, client_ip, client_port, response);
         return;
@@ -784,12 +770,6 @@ void reserveTicket(int connfd, string client_ip, int client_port, MySQLOperation
     else
     {
         printf("[+]Begin send response...\n");
-        // response[0] = '1';
-        // response[1] = '\0';
-        // log_send_msg(connfd, client_ip, client_port, response);
-
-    // if (showtimeList.size > 0)
-    // {
         int result = FAIL;
         string seatmap = showtimeList.showTimes[0].seatMap;
         int noSeats = 0;
@@ -806,10 +786,5 @@ void reserveTicket(int connfd, string client_ip, int client_port, MySQLOperation
         response[1] = '\0';
         log_send_msg(connfd, client_ip, client_port, response);
     }
-    // else
-    // {
-    //     char response[] = "Showtime not found!\n";
-    //     log_send_msg(connfd, client_ip, client_port, response);
-    // }
     freeShowTimeList(&showtimeList);
 }

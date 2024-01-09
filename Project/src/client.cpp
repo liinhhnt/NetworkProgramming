@@ -24,7 +24,8 @@ void searchMovie();
 void browseMovie();
 void bookTicket();
 void reserve(int showtimeId);
-bool isInteger(const std::string &s);
+bool isInteger(const string &s);
+bool isValidTicketFormat(string tickets);
 void logout();
 
 int main(int argc, char **argv)
@@ -52,7 +53,7 @@ void connectToServer(char *ip)
         perror("[-]Problem in creating the socket");
         exit(2);
     }
-    std::cout << "[+]Client Socket is created." << std::endl;
+    cout << "[+]Client Socket is created." << endl;
     // Creation of the socket
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
@@ -64,7 +65,7 @@ void connectToServer(char *ip)
         perror("[-]Problem in connecting to the server");
         exit(3);
     }
-    std::cout << "[+]Connected to Server." << std::endl;
+    cout << "[+]Connected to Server." << endl;
 }
 
 void displayMenu()
@@ -280,7 +281,10 @@ void browseMovie()
 
     cout << "Which movie type do you want to browse?\nEnter a specific typeId or enter ALL to browse all type:\n";
     cin >> typeId;
-
+    for (int i = 0; i < strlen(typeId); ++i)
+    {
+        typeId[i] = toupper(typeId[i]);
+    }
     // send request to get list of cinemas
     sprintf(sendline, "%d\n", GET_LIST_CINEMA);
     send(socketfd, sendline, strlen(sendline), 0);
@@ -291,26 +295,28 @@ void browseMovie()
 
     cout << "Which cinema do you want to browse?\nEnter a specific cinemaId or enter ALL to browse all cinemas:\n";
     cin >> cinemaId;
-
+    for (int i = 0; i < strlen(cinemaId); ++i)
+    {
+        cinemaId[i] = toupper(cinemaId[i]);
+    }
     // display list of weekday
     cout << "What weekday do you want to browse movies?\nEnter the weekday (e.g., Monday, Tuesday) or ALL if you want to browse all days\n";
     while (true)
     {
         cin >> weekday;
         // Convert the input to lowercase for case-insensitive comparison
-        std::transform(std::begin(weekday), std::end(weekday) - 1, std::begin(weekday), [](unsigned char c)
-                       { return std::tolower(c); });
+        transform(begin(weekday), end(weekday) - 1, begin(weekday), [](unsigned char c)
+                  { return toupper(c); });
 
-        if (std::string(weekday) == "monday" || std::string(weekday) == "tuesday" || std::string(weekday) == "wednesday" ||
-            std::string(weekday) == "thursday" || std::string(weekday) == "friday" || std::string(weekday) == "saturday" ||
-            std::string(weekday) == "sunday" || std::string(weekday) == "all")
+        if (string(weekday) == "MONDAY" || string(weekday) == "TUESDAY" || string(weekday) == "WEDNESDAY" ||
+            string(weekday) == "THURSDAY" || string(weekday) == "FRIDAY" || string(weekday) == "SATURDAY" ||
+            string(weekday) == "SUNDAY" || string(weekday) == "ALL")
         {
-            weekday[0] -= 32; // convert first character to uppercase
-            break;            // Input is valid, exit the loop
+            break; // Input is valid, exit the loop
         }
         else
         {
-            std::cout << "Invalid input. Please enter a valid weekday (e.g., Monday, Tuesday) or ALL\n";
+            cout << "Invalid input. Please enter a valid weekday (e.g., Monday, Tuesday) or ALL\n";
         }
     }
 
@@ -322,7 +328,7 @@ void browseMovie()
     displayReceiveMessage(&socketfd);
 }
 
-bool isInteger(const std::string &s)
+bool isInteger(const string &s)
 {
     if (s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+')))
         return false;
@@ -333,8 +339,23 @@ bool isInteger(const std::string &s)
     return (*p == 0);
 }
 
+bool isValidTicketFormat(string tickets)
+{
+    istringstream iss(tickets);
+    string token;
+    while (iss >> token)
+    {
+        if (token.size() < 2 || !isalpha(token[0]) || !isdigit(token[1]) || token[0] < 'A' || token[0] > 'Z' || token[1] < '1' || token[1] > '9')
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 void reserve(int showtimeId)
 {
+    char sendline[MAXLINE], recvline[MAXLINE];
     int noTickets = -1;
     // send request to detail info of showtime
     sprintf(sendline, "%d\n%d\n", GET_SHOWTIME_INFO, showtimeId);
@@ -348,44 +369,57 @@ void reserve(int showtimeId)
     while (true)
     {
         cout << "How many movie tickets do you want to reserve? (Enter 0 if you do not want to book ticket): ";
-        std::string noTicketsStr;
+        string noTicketsStr;
         cin >> noTicketsStr;
         if (isInteger(noTicketsStr))
-            noTickets = std::stoi(noTicketsStr);
-        if (noTickets >= 0)
+            noTickets = stoi(noTicketsStr);
+        if (noTickets >= 0) {
             break;
+            cin.ignore();
+        }
         else
         {
-            printf("Invalid number. The number of ticket must be non-negative! Please enter again\n")
+            printf("Invalid number. The number of ticket must be non-negative! Please enter again\n");
         }
     }
+    int trick = 1;
     if (noTickets > 0)
     {
         // Get list of tickets
-        string tickets;
-        cout << "Enter the ticket IDs separated by space: ";
-        cin.ignore(); // Clear input buffer
-        getline(cin, tickets);
+        while (true)
+        {
+            string tickets;
+            cout << "Enter the ticket IDs separated by space (Eg.: A1 B2 C3):\n";
+            if (trick) cin.ignore(), trick--; // Clear input buffer            
+            getline(cin, tickets);
+            if (!isValidTicketFormat(tickets))
+            {
+                printf("Invalid ticket format. Ticket IDs must be in the format [A-Z][1-9]. Example: A1 B2 C3\n");
+            }
+            else
+            {
+                // send request to reserve ticket by showtimeid, number of tickets, and list of ticket
+                sprintf(sendline, "%d\n%d %d %s", RESERVE, showtimeId, noTickets, tickets.c_str());
+                send(socketfd, sendline, strlen(sendline), 0);
 
-        // send request to reserve ticket by showtimeid, number of tickets, and list of ticket
-        sprintf(sendline, "%d\n%d %d %s", RESERVE, showtimeId, noTickets, tickets.c_str());
-        send(socketfd, sendline, strlen(sendline), 0);
-
-        recv(socketfd, recvline, MAXLINE, 0);
-        int auth = recvline[0] - '0';
-        if (auth == SUCCESS)
-        {
-            printf("You have successfully booked the ticket(s)\n");
-        }
-        else if (auth == FAIL)
-        {
-            printf("Ticket booking was not successful, maybe the seat was booked by someone else or you type something wrong. Please try again!!!\n");
-            reserve(showtimeId); // Retry booking process
-        }
-        else
-        {
-            perror(recvline);
-            exit(4);
+                recv(socketfd, recvline, MAXLINE, 0);
+                int auth = recvline[0] - '0';
+                if (auth == SUCCESS)
+                {
+                    printf("You have successfully booked ticket(s): %s\n", tickets.c_str());
+                }
+                else if (auth == FAIL)
+                {
+                    printf("Ticket booking was not successful, maybe the seat was booked by someone else or you type something wrong. Please try again!!!\n");
+                    reserve(showtimeId); // Retry booking process
+                }
+                else
+                {
+                    perror(recvline);
+                    exit(4);
+                }
+                break;
+            }
         }
     }
 }
@@ -406,11 +440,11 @@ void bookTicket()
     while (true)
     {
         cout << "Which movie do you want to reserve?\nEnter a specific movieId:\n";
-        std::string movieIdStr;
+        string movieIdStr;
         cin >> movieIdStr;
         if (isInteger(movieIdStr))
         {
-            movieId = std::stoi(movieIdStr);
+            movieId = stoi(movieIdStr);
 
             // send request to get list of showtime by movieId
             sprintf(sendline, "%d\n%d\n", GET_LIST_SHOWTIME_BY_MOVIEID, movieId);
@@ -423,11 +457,11 @@ void bookTicket()
             while (true)
             {
                 cout << "Which showtime do you want to see?\nEnter a specific showtimeId:\n";
-                std::string showtimeIdStr;
+                string showtimeIdStr;
                 cin >> showtimeIdStr;
                 if (isInteger(showtimeIdStr))
                 {
-                    int showtimeId = std::stoi(showtimeIdStr);
+                    int showtimeId = stoi(showtimeIdStr);
                     reserve(showtimeId);
                     break;
                 }

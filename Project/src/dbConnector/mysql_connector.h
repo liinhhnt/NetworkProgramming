@@ -28,6 +28,7 @@ public:
     void getListTypes(struct TypeList *typeList, const string& query);
     void getListCinemas(struct CinemaList *cinemaList, const string& query);
     void getListShowTimes(struct ShowTimeList *showTimeList, const std::string& query);
+    int updateShowTimeSeatMap(int showTimeId, const std::string &query);
     void disconnect();
 };
 

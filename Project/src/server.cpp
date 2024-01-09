@@ -34,8 +34,8 @@ void getListShowtimeByMovieId(int connfd, string client_ip, int client_port, MyS
 void getShowtimeInfo(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, int showTimeId);
 void browseMovie(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, string typeId, string movieId, string weekday);
 void reserveTicket(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, int showTimeId, int noOfTickets, string tickets);
-void convertSeatMapToClient(const std::string &seatMap);
-void convertClientFormToSeatMap(std::string &seatMap, const std::string &bookedTicket);
+void convertSeatMapToClient(int connfd, string client_ip, int client_port, const std::string &seatMap);
+string convertClientFormToSeatMap(string &seatMap, const string &bookedTicket, int * noSeats);
 
 int main(int argc, char **argv)
 {
@@ -195,7 +195,7 @@ int main(int argc, char **argv)
                 {
                     char response[50];
                     int movieId;
-                    int noargs = sscanf(buf, "%d\n%d\n", &cmd, movieId);
+                    int noargs = sscanf(buf, "%d\n%d\n", &cmd, &movieId);
                     if (noargs == 2)
                     {
                         getListShowtimeByMovieId(connfd, client_ip, client_port, &mysqlOps, movieId);
@@ -212,7 +212,7 @@ int main(int argc, char **argv)
                 {
                     char response[50];
                     int showtimeId;
-                    int noargs = sscanf(buf, "%d\n%d\n", &cmd, showtimeId);
+                    int noargs = sscanf(buf, "%d\n%d\n", &cmd, &showtimeId);
                     if (noargs == 2)
                     {
 
@@ -230,7 +230,7 @@ int main(int argc, char **argv)
                 {
                     int showtimeId, noTickets;
                     char tickets[100], response[50];
-                    int noargs = sscanf(buf, "%d\n%d %d %s\n", &cmd, showtimeId, noTickets, tickets);
+                    int noargs = sscanf(buf, "%d\n%d %d %99[^\n]", &cmd, &showtimeId, &noTickets, tickets);
                     if (noargs == 4)
                     {
                         reserveTicket(connfd, client_ip, client_port, &mysqlOps, showtimeId, noTickets, tickets);
@@ -477,7 +477,7 @@ void browseMovie(int connfd, string client_ip, int client_port, MySQLOperations 
         sql += " AND t.typeId = " + typeId;
     if (cinemaId != "ALL")
         sql += " AND c.cinemaId = " + cinemaId;
-    if (weekday != "All")
+    if (weekday != "ALL")
         sql += " AND s.weekday = " + weekday;
     sql += ";";
     cout << "SQL query: " << sql << '\n';
@@ -517,13 +517,13 @@ void browseMovie(int connfd, string client_ip, int client_port, MySQLOperations 
     printf("[+]Send completely!\n");
 }
 
-void convertSeatMapToClient(const std::string &seatMap)
+void convertSeatMapToClient(int connfd, string client_ip, int client_port, const std::string &seatMap)
 {
     std::vector<std::string> rows;
     std::string row;
     for (char seat : seatMap)
     {
-        if (seat == '/')
+        if (seat == '/') // separator of each row
         {
             rows.push_back(row);
             row.clear();
@@ -535,47 +535,183 @@ void convertSeatMapToClient(const std::string &seatMap)
     }
     rows.push_back(row); // Add the last row
 
+    char sendline[MAXLINE];
+    char END[] = "End";
+
+    sprintf(sendline, "%s", "Seat map:\n");
+    log_send_msg(connfd, client_ip, client_port, sendline);
+    memset(sendline, 0, strlen(sendline));
     char rowName = 'A';
     for (const std::string &r : rows)
     {
         int seatNumber = 1;
+        std::string formattedRow;
         for (char seat : r)
         {
-            std::cout << rowName << seatNumber << "-";
+            formattedRow += rowName + std::to_string(seatNumber) + "-";
             if (seat == 'E')
             {
-                std::cout << "Empty  ";
+                formattedRow += "Empty     ";
             }
             else if (seat == 'R')
             {
-                std::cout << "Reserved  ";
+                formattedRow += "Reserved  ";
             }
             seatNumber++;
         }
-        std::cout << std::endl;
+        formattedRow += "\n";
+        sprintf(sendline, "%s", formattedRow.c_str());
+        log_send_msg(connfd, client_ip, client_port, sendline);
+        memset(sendline, 0, strlen(sendline));
         rowName++;
     }
+    // Send "End" to mark the end of the seat map
+    usleep(500000);
+    sprintf(sendline, "%s", END);
+    log_send_msg(connfd, client_ip, client_port, sendline);
 }
 
-void convertClientFormToSeatMap(std::string &seatMap, const std::string &bookedTicket)
+string convertClientFormToSeatMap(std::string &seatMap, const std::string &bookedTicket, int * noSeats)
 {
     std::istringstream iss(bookedTicket);
     char row;
     int seatNumber;
+
+    // Iterate through each booking in the bookedTicket string
     while (iss >> row >> seatNumber)
     {
         int rowIndex = row - 'A';
         int seatIndex = seatNumber - 1;
         int position = 0;
-        for (int i = 0; i < rowIndex; ++i)
+        int rowCount = 0;
+        // Find the position in the seatMap corresponding to the booking
+        while (rowCount < rowIndex)
         {
-            while (seatMap[position] != '/')
+            if (seatMap[position] == '/')
             {
-                position++;
+                rowCount++;
             }
             position++;
         }
+
+        // Adjust the position based on the seat index
         position += seatIndex;
+
+        // Check if the position is valid and the seat is empty
+        if (position >= seatMap.length() || seatMap[position] != 'E')
+        {
+            std::cout << "Error: Seat at position " << position << " is not available." << std::endl;
+            return "-"; // Position exceeds the length of seatMap or seat is not empty
+        }
+
+        // Update the seatMap to mark the seat as reserved
         seatMap[position] = 'R';
+        (*noSeats)++;
     }
+
+    // Return the updated seatMap if all reservations were successful
+    return seatMap;
+}
+void getListShowtimeByMovieId(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, int movieId)
+{
+    string sql = "SELECT * FROM showtimes s JOIN cinemas c ON s.cinemaId=c.cinemaId WHERE movieId = " + to_string(movieId) + ";";
+    cout << "SQL query: " << sql << '\n';
+
+    struct ShowTimeList showtimeList;
+    initShowTimeList(&showtimeList);
+    (*mysqlOps).getListShowTimes(&showtimeList, sql);
+
+    char sendline[MAXLINE];
+    char END[10] = "End";
+
+    printf("[+]Begin send response...\n");
+
+    sprintf(sendline, "Number of showtimes for movieID %d: %d\n", movieId, showtimeList.size);
+    log_send_msg(connfd, client_ip, client_port, sendline);
+
+    send(connfd, "===========================================================================================================\n", MAXLINE, 0);
+    sprintf(sendline, "| %-10s | %-10s | %-20s | %-10s | %-10s | %-10s | %-15s | \n", "ShowtimeId", "RoomId", "Cinema name", "Weekday", "StartTime", "EndTime", "NoOfEmptySeats");
+    log_send_msg(connfd, client_ip, client_port, sendline);
+    memset(sendline, 0, strlen(sendline));
+    send(connfd, "----------------------------------------------------------------------------------------------------------|\n", MAXLINE, 0);
+    for (int i = 0; i < showtimeList.size; i++)
+    {
+        struct ShowTime showtime = showtimeList.showTimes[i];
+        sprintf(sendline, "| %-10d | %-10d | %-20s | %-10s | %-10s | %-10s | %-15d |\n",
+                showtime.showTimeId, showtime.roomId, showtime.cinema, showtime.weekday, showtime.startTime, showtime.endTime, showtime.noOfEmptySeats);
+        log_send_msg(connfd, client_ip, client_port, sendline);
+        memset(sendline, 0, MAXLINE);
+    }
+    send(connfd, "===========================================================================================================\n", MAXLINE, 0);
+    usleep(500000);
+    sprintf(sendline, "%s", END);
+    log_send_msg(connfd, client_ip, client_port, sendline);
+    memset(sendline, 0, strlen(sendline));
+    freeShowTimeList(&showtimeList);
+
+    printf("[+]Send completely!\n");
+}
+
+void getShowtimeInfo(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, int showTimeId)
+{
+    string sql = "SELECT * FROM showtimes s JOIN cinemas c ON s.cinemaId=c.cinemaId JOIN movies m ON s.movieId=m.movieId WHERE showTimeId = " + to_string(showTimeId) + ";";
+    cout << "SQL query: " << sql << '\n';
+
+    struct ShowTimeList showtimeList;
+    initShowTimeList(&showtimeList);
+    (*mysqlOps).getListShowTimes(&showtimeList, sql);
+
+    if (showtimeList.size > 0)
+    {
+        printf("[+]Begin send response...\n");
+        send(connfd, "-----------------------------------------------------------------|\n", MAXLINE, 0);
+        struct ShowTime showtime = showtimeList.showTimes[0];
+        char sendline[MAXLINE];
+        sprintf(sendline, "Showtime ID: %d\nMovie name: %s\nRoom: %d\nCinema: %s\nWeekday: %s\nStart Time: %s\nEnd Time: %s\nNo of Empty Seats: %d\n",
+                showtime.showTimeId, showtime.movieName, showtime.roomId, showtime.cinema, showtime.weekday, showtime.startTime, showtime.endTime, showtime.noOfEmptySeats);
+        log_send_msg(connfd, client_ip, client_port, sendline);
+        convertSeatMapToClient(connfd, client_ip, client_port, showtime.seatMap);
+        printf("[+]Send completely!\n");
+    }
+    else
+    {
+        char response[] = "Showtime not found!\n";
+        log_send_msg(connfd, client_ip, client_port, response);
+    }
+    freeShowTimeList(&showtimeList);
+}
+
+void reserveTicket(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, int showTimeId, int noOfTickets, string tickets)
+{
+    string sql = "SELECT * FROM showtimes WHERE showTimeId = " + to_string(showTimeId) + ";";
+    cout << "SQL query: " << sql << '\n';
+
+    struct ShowTimeList showtimeList;
+    initShowTimeList(&showtimeList);
+    (*mysqlOps).getListShowTimes(&showtimeList, sql);
+
+    if (showtimeList.size > 0)
+    {
+        int result = FAIL;
+        string seatmap = showtimeList.showTimes[0].seatMap;
+        int noSeats = 0;
+        int noEmptys = showtimeList.showTimes[0].noOfEmptySeats;
+        string newSeatmap = convertClientFormToSeatMap(seatmap, tickets, &noSeats);
+        if (newSeatmap [0]!= '-')
+        {
+            sql = "UPDATE showtimes SET seatMap = '" + newSeatmap + "', noOfEmptySeats=" + to_string(noEmptys-noSeats)+ " WHERE showTimeId = " + to_string(showTimeId) + ";";
+            cout << "SQL query: " << sql << '\n';
+            result = (*mysqlOps).updateShowTimeSeatMap(showTimeId, sql);
+        }
+        char response[MAXLINE];
+        response[0] = '0' + result;
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
+    }
+    else
+    {
+        char response[] = "Showtime not found!\n";
+        log_send_msg(connfd, client_ip, client_port, response);
+    }
+    freeShowTimeList(&showtimeList);
 }

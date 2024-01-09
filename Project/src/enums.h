@@ -18,10 +18,11 @@ enum UserActions {
     GET_LIST_MOVIES = 8,
     GET_LIST_CINEMA = 9, 
     GET_LIST_ROOMS_OF_CINEMA = 10,
-    GET_LIST_SHOWID = 11,
+    GET_LIST_SHOWTIME_BY_MOVIEID = 11,
     MODIFY_SHOWING = 12,
     CREATE_USER = 13,
     GET_LIST_TYPE = 14,
+    GET_SHOWTIME_INFO = 15,
 };
 
 enum AuthCode {

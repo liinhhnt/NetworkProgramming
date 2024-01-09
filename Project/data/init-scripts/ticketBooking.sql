@@ -88,7 +88,7 @@ BEGIN
             OR new_endTime <= startTime
         );
 
-    IF room_occupied > 0 THEN
+    IF room_occupied > 1 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'This room is not available for this showtime';
     END IF;
@@ -115,7 +115,9 @@ CREATE TRIGGER check_room_availability_on_update
 BEFORE UPDATE ON showtimes
 FOR EACH ROW
 BEGIN
-    CALL CheckRoomAvailability(NEW.startTime, NEW.endTime, NEW.roomId, NEW.weekday);
+    IF (NEW.startTime IS NOT NULL AND NEW.endTime IS NOT NULL AND NEW.roomId IS NOT NULL AND NEW.weekday IS NOT NULL) THEN
+        CALL CheckRoomAvailability(NEW.startTime, NEW.endTime, NEW.roomId, NEW.weekday);
+    END IF;
 END;
 //
 

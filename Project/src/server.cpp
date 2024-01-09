@@ -30,7 +30,12 @@ int login(MySQLOperations *mysqlOps, string username, string password);
 void searchMovie(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, string title);
 void getListType(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps);
 void getListCinema(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps);
+void getListShowtimeByMovieId(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, int movieId);
+void getShowtimeInfo(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, int showTimeId, int movieId);
 void browseMovie(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, string typeId, string movieId, string weekday);
+void reserveTicket(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, int showTimeId, int noOfTickets, string tickets);
+void convertSeatMapToClient(int connfd, string client_ip, int client_port, const std::string &seatMap);
+string convertClientFormToSeatMap(string &seatMap, const string &bookedTicket, int *noSeats);
 
 int main(int argc, char **argv)
 {
@@ -91,10 +96,16 @@ int main(int argc, char **argv)
 
                 int cmd = 0;
 
-                for (int i=0; i<strlen(buf); i++)
+                for (int i = 0; i < strlen(buf); i++)
                 {
                     char digit = buf[i];
-                    if (digit == '\n') break;
+                    if (digit == '\n')
+                        break;
+                    if (!(digit >= '0' && digit <= '9'))
+                    {
+                        cmd = -1;
+                        break;
+                    }
                     cmd = cmd * 10 + (int)(digit - '0');
                 }
                 switch (cmd)
@@ -143,7 +154,7 @@ int main(int argc, char **argv)
                     int noargs = sscanf(buf, "%d\n%s\n", &cmd, title);
                     if (noargs == 2)
                     {
-                        searchMovie(connfd, client_ip,client_port, &mysqlOps, title);
+                        searchMovie(connfd, client_ip, client_port, &mysqlOps, title);
                     }
                     else
                     {
@@ -154,10 +165,10 @@ int main(int argc, char **argv)
                     break;
                 }
                 case GET_LIST_TYPE:
-                    getListType(connfd, client_ip,client_port, &mysqlOps);
+                    getListType(connfd, client_ip, client_port, &mysqlOps);
                     break;
                 case GET_LIST_CINEMA:
-                    getListCinema(connfd, client_ip,client_port, &mysqlOps);
+                    getListCinema(connfd, client_ip, client_port, &mysqlOps);
                     break;
                 case BROWSE:
                 {
@@ -165,12 +176,69 @@ int main(int argc, char **argv)
                     int noargs = sscanf(buf, "%d\n%s %s %s\n", &cmd, typeId, cinemaId, weekday);
                     if (noargs == 4)
                     {
-                        browseMovie(connfd, client_ip,client_port, &mysqlOps, typeId, cinemaId, weekday);
+                        browseMovie(connfd, client_ip, client_port, &mysqlOps, typeId, cinemaId, weekday);
                     }
                     else
                     {
                         printf("[-]Invalid browse protocol! %s\n", buf);
                         sprintf(response, "Invalid browse protocol!\n");
+                        log_send_msg(connfd, client_ip, client_port, response);
+                    }
+                    break;
+                }
+                case GET_LIST_MOVIES:
+                {
+                    searchMovie(connfd, client_ip, client_port, &mysqlOps, "");
+                    break;
+                }
+                case GET_LIST_SHOWTIME_BY_MOVIEID:
+                {
+                    char response[50];
+                    int movieId;
+                    int noargs = sscanf(buf, "%d\n%d\n", &cmd, &movieId);
+                    if (noargs == 2)
+                    {
+                        getListShowtimeByMovieId(connfd, client_ip, client_port, &mysqlOps, movieId);
+                    }
+                    else
+                    {
+                        printf("[-]Invalid get list of showtime protocol! %s\n", buf);
+                        sprintf(response, "Invalid get list of showtime protocol!\n");
+                        log_send_msg(connfd, client_ip, client_port, response);
+                    }
+                    break;
+                }
+                case GET_SHOWTIME_INFO:
+                {
+                    char response[50];
+                    int showtimeId, movieId;
+                    int noargs = sscanf(buf, "%d\n%d %d\n", &cmd, &showtimeId, &movieId);
+                    if (noargs == 3)
+                    {
+
+                        getShowtimeInfo(connfd, client_ip, client_port, &mysqlOps, showtimeId, movieId);
+                    }
+                    else
+                    {
+                        printf("[-]Invalid get showtime info protocol! %s\n", buf);
+                        sprintf(response, "Invalid get showtime info protocol!\n");
+                        log_send_msg(connfd, client_ip, client_port, response);
+                    }
+                    break;
+                }
+                case RESERVE:
+                {
+                    int showtimeId, noTickets;
+                    char tickets[100], response[50];
+                    int noargs = sscanf(buf, "%d\n%d %d %99[^\n]", &cmd, &showtimeId, &noTickets, tickets);
+                    if (noargs == 4)
+                    {
+                        reserveTicket(connfd, client_ip, client_port, &mysqlOps, showtimeId, noTickets, tickets);
+                    }
+                    else
+                    {
+                        printf("[-]Invalid reserve ticket protocol! %s\n", buf);
+                        sprintf(response, "Invalid reserve ticket protocol!\n");
                         log_send_msg(connfd, client_ip, client_port, response);
                     }
                     break;
@@ -282,7 +350,7 @@ int login(MySQLOperations *mysqlOps, string username, string password)
 
 void searchMovie(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, string title)
 {
-     // Chuyển chuỗi title về dạng chữ thường
+    // Chuyển chuỗi title về dạng chữ thường
     std::transform(title.begin(), title.end(), title.begin(), ::tolower);
     string sql = "SELECT * FROM movies m JOIN types t WHERE LOWER(movieName) like '%" + title + "%' and m.typeId=t.typeId;";
     cout << "SQL query: " << sql << '\n';
@@ -291,34 +359,46 @@ void searchMovie(int connfd, string client_ip, int client_port, MySQLOperations 
     initMovieList(&movieList);
     (*mysqlOps).getListMovies(&movieList, sql);
 
-    char sendline[MAXLINE];
+    char sendline[MAXLINE], response[10];
     char END[10] = "End";
 
-    printf("[+]Begin send response...\n");
+    if (!movieList.size)
+    {
+        response[0] = '0' + FAIL;
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
+        return;
+    }
+    else
+    {
+        printf("[+]Begin send response...\n");
+        response[0] = '0' + SUCCESS;
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
+        sprintf(sendline, "Number of movies matched: %d\n", movieList.size);
+        log_send_msg(connfd, client_ip, client_port, sendline);
 
-    sprintf(sendline, "Number of movies matched: %d\n", movieList.size);
-    log_send_msg(connfd, client_ip, client_port, sendline);
-
-    send(connfd, "===============================================================================================================================================\n", MAXLINE, 0);
-    sprintf(sendline, "%-10s | %-25s | %-10s | %-10s | %-75s |\n", "MovieId", "Movie name", "Type", "Duration", "Description");
-    log_send_msg(connfd, client_ip, client_port, sendline);
-    memset(sendline, 0, strlen(sendline));
-    send(connfd, "-----------------------------------------------------------------------------------------------------------------------------------------------|\n", MAXLINE, 0);
-    for (int i = 0; i < movieList.size; i++) {
-        struct Movie movie = movieList.movies[i];
+        send(connfd, "===============================================================================================================================================\n", MAXLINE, 0);
+        sprintf(sendline, "%-10s | %-25s | %-10s | %-10s | %-75s |\n", "MovieId", "Movie name", "Type", "Duration", "Description");
+        log_send_msg(connfd, client_ip, client_port, sendline);
+        memset(sendline, 0, strlen(sendline));
+        send(connfd, "-----------------------------------------------------------------------------------------------------------------------------------------------|\n", MAXLINE, 0);
+        for (int i = 0; i < movieList.size; i++)
+        {
+            struct Movie movie = movieList.movies[i];
             sprintf(sendline, "%-10d | %-25s | %-10s | %-10s | %-75s |\n",
-                movie.movieId, movie.movieName, movie.typeName, movie.duration, movie.describtion);
+                    movie.movieId, movie.movieName, movie.typeName, movie.duration, movie.describtion);
             log_send_msg(connfd, client_ip, client_port, sendline);
             memset(sendline, 0, MAXLINE);
+        }
+        send(connfd, "===============================================================================================================================================\n", MAXLINE, 0);
+        usleep(500000);
+        sprintf(sendline, "%s", END);
+        log_send_msg(connfd, client_ip, client_port, sendline);
+        memset(sendline, 0, strlen(sendline));
+        printf("[+]Send completely!\n");
     }
-    send(connfd, "===============================================================================================================================================\n", MAXLINE, 0);
-    usleep(500000);
-    sprintf(sendline, "%s", END);
-    log_send_msg(connfd, client_ip, client_port, sendline);
-    memset(sendline, 0, strlen(sendline));
     freeMovieList(&movieList);
-
-    printf("[+]Send completely!\n");
 }
 
 void getListType(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps)
@@ -326,38 +406,52 @@ void getListType(int connfd, string client_ip, int client_port, MySQLOperations 
     string sql = "SELECT * FROM types;";
     cout << "SQL query: " << sql << '\n';
 
-    struct TypeList typeList; 
-    initTypeList(&typeList); 
-    (*mysqlOps).getListTypes(&typeList, sql); 
+    struct TypeList typeList;
+    initTypeList(&typeList);
+    (*mysqlOps).getListTypes(&typeList, sql);
 
-    char sendline[MAXLINE];
+    char sendline[MAXLINE], response[10];
     char END[10] = "End";
 
-    printf("[+]Begin send response...\n");
-
-    sprintf(sendline, "Number of available movie types: %d\n", typeList.size); // 
-    log_send_msg(connfd, client_ip, client_port, sendline);
-
-    send(connfd, "========================================\n", MAXLINE, 0);
-    sprintf(sendline, "%-10s | %-25s |\n", "TypeId", "Type name"); 
-    log_send_msg(connfd, client_ip, client_port, sendline);
-    memset(sendline, 0, strlen(sendline));
-    send(connfd, "---------------------------------------|\n", MAXLINE, 0);
-    for (int i = 0; i < typeList.size; i++) {
-        struct Type type = typeList.types[i]; 
-        sprintf(sendline, "%-10d | %-25s |\n", 
-            type.typeId, type.typeName);
-        log_send_msg(connfd, client_ip, client_port, sendline);
-        memset(sendline, 0, MAXLINE);
+    if (!typeList.size)
+    {
+        response[0] = '0' + FAIL;
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
+        return;
     }
-    send(connfd, "========================================\n", MAXLINE, 0);
-    usleep(500000);
-    sprintf(sendline, "%s", END);
-    log_send_msg(connfd, client_ip, client_port, sendline);
-    memset(sendline, 0, strlen(sendline));
-    freeTypeList(&typeList); 
+    else
+    {
+        printf("[+]Begin send response...\n");
+        response[0] = '0' + SUCCESS;
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
 
-    printf("[+]Send completely!\n");
+        sprintf(sendline, "Number of available movie types: %d\n", typeList.size); //
+        log_send_msg(connfd, client_ip, client_port, sendline);
+
+        send(connfd, "========================================\n", MAXLINE, 0);
+        sprintf(sendline, "%-10s | %-25s |\n", "TypeId", "Type name");
+        log_send_msg(connfd, client_ip, client_port, sendline);
+        memset(sendline, 0, strlen(sendline));
+        send(connfd, "---------------------------------------|\n", MAXLINE, 0);
+        for (int i = 0; i < typeList.size; i++)
+        {
+            struct Type type = typeList.types[i];
+            sprintf(sendline, "%-10d | %-25s |\n",
+                    type.typeId, type.typeName);
+            log_send_msg(connfd, client_ip, client_port, sendline);
+            memset(sendline, 0, MAXLINE);
+        }
+        send(connfd, "========================================\n", MAXLINE, 0);
+        usleep(500000);
+        sprintf(sendline, "%s", END);
+        log_send_msg(connfd, client_ip, client_port, sendline);
+        memset(sendline, 0, strlen(sendline));
+
+        printf("[+]Send completely!\n");
+    }
+    freeTypeList(&typeList);
 }
 
 void getListCinema(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps)
@@ -365,79 +459,332 @@ void getListCinema(int connfd, string client_ip, int client_port, MySQLOperation
     string sql = "SELECT * FROM cinemas;";
     cout << "SQL query: " << sql << '\n';
 
-    struct CinemaList cinemaList; 
-    initCinemaList(&cinemaList); 
-    (*mysqlOps).getListCinemas(&cinemaList, sql); 
+    struct CinemaList cinemaList;
+    initCinemaList(&cinemaList);
+    (*mysqlOps).getListCinemas(&cinemaList, sql);
 
-    char sendline[MAXLINE];
+    char sendline[MAXLINE], response[10];
     char END[10] = "End";
 
-    printf("[+]Begin send response...\n");
-
-    sprintf(sendline, "Number of available cinemas: %d\n", cinemaList.size); // 
-    log_send_msg(connfd, client_ip, client_port, sendline);
-
-    send(connfd, "====================================================================\n", MAXLINE, 0);
-    sprintf(sendline, "%-10s | %-25s | %-25s |\n", "CinemaId", "Cinema name", "Location"); 
-    log_send_msg(connfd, client_ip, client_port, sendline);
-    memset(sendline, 0, strlen(sendline));
-    send(connfd, "-------------------------------------------------------------------|\n", MAXLINE, 0);
-    for (int i = 0; i < cinemaList.size; i++) {
-        struct Cinema cinema = cinemaList.cinemas[i]; 
-        sprintf(sendline, "%-10d | %-25s | %-25s |\n", 
-            cinema.cinemaId, cinema.cinemaName, cinema.location);
-        log_send_msg(connfd, client_ip, client_port, sendline);
-        memset(sendline, 0, MAXLINE);
+    if (!cinemaList.size)
+    {
+        response[0] = '0' + FAIL;
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
+        return;
     }
-    send(connfd, "====================================================================\n", MAXLINE, 0);
-    usleep(500000);
-    sprintf(sendline, "%s", END);
-    log_send_msg(connfd, client_ip, client_port, sendline);
-    memset(sendline, 0, strlen(sendline));
-    freeCinemaList(&cinemaList); 
+    else
+    {
+        printf("[+]Begin send response...\n");
+        response[0] = '0' + SUCCESS;
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
 
-    printf("[+]Send completely!\n");
+        sprintf(sendline, "Number of available cinemas: %d\n", cinemaList.size); //
+        log_send_msg(connfd, client_ip, client_port, sendline);
+
+        send(connfd, "====================================================================\n", MAXLINE, 0);
+        sprintf(sendline, "%-10s | %-25s | %-25s |\n", "CinemaId", "Cinema name", "Location");
+        log_send_msg(connfd, client_ip, client_port, sendline);
+        memset(sendline, 0, strlen(sendline));
+        send(connfd, "-------------------------------------------------------------------|\n", MAXLINE, 0);
+        for (int i = 0; i < cinemaList.size; i++)
+        {
+            struct Cinema cinema = cinemaList.cinemas[i];
+            sprintf(sendline, "%-10d | %-25s | %-25s |\n",
+                    cinema.cinemaId, cinema.cinemaName, cinema.location);
+            log_send_msg(connfd, client_ip, client_port, sendline);
+            memset(sendline, 0, MAXLINE);
+        }
+        send(connfd, "====================================================================\n", MAXLINE, 0);
+        usleep(500000);
+        sprintf(sendline, "%s", END);
+        log_send_msg(connfd, client_ip, client_port, sendline);
+        memset(sendline, 0, strlen(sendline));
+
+        printf("[+]Send completely!\n");
+    }
+    freeCinemaList(&cinemaList);
 }
 
 void browseMovie(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, string typeId, string cinemaId, string weekday)
 {
     string sql = "SELECT m.movieId, m.movieName, t.typeName, c.cinemaName, s.weekday, s.startTime, s.endTime, s.showTimeId, s.roomId, s.seatMap, s.noOfEmptySeats FROM movies m, cinemas c, types t, showtimes s WHERE m.movieId = s.movieId AND m.typeId = t.typeId AND s.cinemaId = c.cinemaId";
-    if (typeId != "ALL") sql += " AND t.typeId = " + typeId;
-    if (cinemaId != "ALL") sql += " AND c.cinemaId = " + cinemaId;
-    if (weekday != "All") sql += " AND s.weekday = " + weekday;
+    if (typeId != "ALL")
+        sql += " AND t.typeId = " + typeId;
+    if (cinemaId != "ALL")
+        sql += " AND c.cinemaId = " + cinemaId;
+    if (weekday != "ALL")
+        sql += " AND s.weekday = '" + weekday + "'";
     sql += ";";
     cout << "SQL query: " << sql << '\n';
 
-    struct ShowTimeList browseList; 
-    initShowTimeList(&browseList); 
-    (*mysqlOps).getListShowTimes(&browseList, sql); 
+    struct ShowTimeList browseList;
+    initShowTimeList(&browseList);
+    (*mysqlOps).getListShowTimes(&browseList, sql);
 
-    char sendline[MAXLINE];
+    char sendline[MAXLINE], response[10];
     char END[10] = "End";
 
-    printf("[+]Begin send response...\n");
+    if (!browseList.size)
+    {
+        response[0] = '0' + FAIL;
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
+        return;
+    }
+    else
+    {
+        printf("[+]Begin send response...\n");
+        response[0] = '0' + SUCCESS;
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
 
-    sprintf(sendline, "Number of movies matched with typeId = %s, cinemaId = %s and showtime = %s: %d\n", typeId.c_str(), cinemaId.c_str(), weekday.c_str(), browseList.size); 
-    log_send_msg(connfd, client_ip, client_port, sendline);
+        sprintf(sendline, "Number of movies matched with typeId = %s, cinemaId = %s and showtime = %s: %d\n", typeId.c_str(), cinemaId.c_str(), weekday.c_str(), browseList.size);
+        log_send_msg(connfd, client_ip, client_port, sendline);
 
-    send(connfd, "==================================================================================================================\n", MAXLINE, 0);
-    sprintf(sendline, "| %-7s | %-25s | %-10s | %-20s | %-10s | %-10s | %-10s |\n", "MovieId", "Movie name", "Type name", "Cinema name", "Showtime", "Start time", "End time"); 
+        send(connfd, "==================================================================================================================\n", MAXLINE, 0);
+        sprintf(sendline, "| %-7s | %-25s | %-10s | %-20s | %-10s | %-10s | %-10s |\n", "MovieId", "Movie name", "Type name", "Cinema name", "Showtime", "Start time", "End time");
+        log_send_msg(connfd, client_ip, client_port, sendline);
+        memset(sendline, 0, strlen(sendline));
+        send(connfd, "-----------------------------------------------------------------------------------------------------------------|\n", MAXLINE, 0);
+        for (int i = 0; i < browseList.size; i++)
+        {
+            struct ShowTime browse = browseList.showTimes[i];
+            sprintf(sendline, "| %-7d | %-25s | %-10s | %-20s | %-10s | %-10s | %-10s |\n",
+                    browse.movieId, browse.movieName, browse.typeName, browse.cinema, browse.weekday, browse.startTime, browse.endTime);
+            log_send_msg(connfd, client_ip, client_port, sendline);
+            memset(sendline, 0, MAXLINE);
+        }
+        send(connfd, "==================================================================================================================\n", MAXLINE, 0);
+        usleep(500000);
+        sprintf(sendline, "%s", END);
+        log_send_msg(connfd, client_ip, client_port, sendline);
+        memset(sendline, 0, strlen(sendline));
+        printf("[+]Send completely!\n");
+    }
+    freeShowTimeList(&browseList);
+}
+
+void convertSeatMapToClient(int connfd, string client_ip, int client_port, const std::string &seatMap)
+{
+    std::vector<std::string> rows;
+    std::string row;
+    for (char seat : seatMap)
+    {
+        if (seat == '/') // separator of each row
+        {
+            rows.push_back(row);
+            row.clear();
+        }
+        else
+        {
+            row += seat;
+        }
+    }
+    rows.push_back(row); // Add the last row
+
+    char sendline[MAXLINE];
+    char END[] = "End";
+
+    sprintf(sendline, "%s", "Seat map:\n");
     log_send_msg(connfd, client_ip, client_port, sendline);
     memset(sendline, 0, strlen(sendline));
-    send(connfd, "-----------------------------------------------------------------------------------------------------------------|\n", MAXLINE, 0);
-    for (int i = 0; i < browseList.size; i++) {
-        struct ShowTime browse = browseList.showTimes[i]; 
-        sprintf(sendline, "| %-7d | %-25s | %-10s | %-20s | %-10s | %-10s | %-10s |\n", 
-            browse.movieId, browse.movieName, browse.typeName, browse.cinema, browse.weekday, browse.startTime, browse.endTime);
+    char rowName = 'A';
+    for (const std::string &r : rows)
+    {
+        int seatNumber = 1;
+        std::string formattedRow;
+        for (char seat : r)
+        {
+            formattedRow += rowName + std::to_string(seatNumber) + "-";
+            if (seat == 'E')
+            {
+                formattedRow += "Empty     ";
+            }
+            else if (seat == 'R')
+            {
+                formattedRow += "Reserved  ";
+            }
+            seatNumber++;
+        }
+        formattedRow += "\n";
+        sprintf(sendline, "%s", formattedRow.c_str());
         log_send_msg(connfd, client_ip, client_port, sendline);
-        memset(sendline, 0, MAXLINE);
+        memset(sendline, 0, strlen(sendline));
+        rowName++;
     }
-    send(connfd, "==================================================================================================================\n", MAXLINE, 0);
+    // Send "End" to mark the end of the seat map
     usleep(500000);
     sprintf(sendline, "%s", END);
     log_send_msg(connfd, client_ip, client_port, sendline);
-    memset(sendline, 0, strlen(sendline));
-    freeShowTimeList(&browseList); 
+}
 
-    printf("[+]Send completely!\n");
-}   
+string convertClientFormToSeatMap(std::string &seatMap, const std::string &bookedTicket, int *noSeats)
+{
+    std::istringstream iss(bookedTicket);
+    char row;
+    int seatNumber;
+
+    // Iterate through each booking in the bookedTicket string
+    while (iss >> row >> seatNumber)
+    {
+        int rowIndex = row - 'A';
+        int seatIndex = seatNumber - 1;
+        int position = 0;
+        int rowCount = 0;
+        // Find the position in the seatMap corresponding to the booking
+        while (rowCount < rowIndex)
+        {
+            if (seatMap[position] == '/')
+            {
+                rowCount++;
+            }
+            position++;
+        }
+
+        // Adjust the position based on the seat index
+        position += seatIndex;
+
+        // Check if the position is valid and the seat is empty
+        if (position >= seatMap.length() || seatMap[position] != 'E')
+        {
+            std::cout << "Error: Seat at position " << position << " is not available." << std::endl;
+            return "-"; // Position exceeds the length of seatMap or seat is not empty
+        }
+
+        // Update the seatMap to mark the seat as reserved
+        seatMap[position] = 'R';
+        (*noSeats)++;
+    }
+
+    // Return the updated seatMap if all reservations were successful
+    return seatMap;
+}
+void getListShowtimeByMovieId(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, int movieId)
+{
+    string sql = "SELECT * FROM showtimes s JOIN cinemas c ON s.cinemaId=c.cinemaId WHERE movieId = " + to_string(movieId) + ";";
+    cout << "SQL query: " << sql << '\n';
+
+    struct ShowTimeList showtimeList;
+    initShowTimeList(&showtimeList);
+    (*mysqlOps).getListShowTimes(&showtimeList, sql);
+
+    char sendline[MAXLINE], response[10];
+    char END[10] = "End";
+
+    if (!showtimeList.size)  // If no showtime matched, send FAIL to user
+    {
+        response[0] = '0' + FAIL;
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
+        return;
+    }
+    else
+    {
+        printf("[+]Begin send response...\n");
+        response[0] = '0' + SUCCESS; 
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
+
+        sprintf(sendline, "Number of showtimes for movieID %d: %d\n", movieId, showtimeList.size);
+        log_send_msg(connfd, client_ip, client_port, sendline);
+
+        send(connfd, "===========================================================================================================\n", MAXLINE, 0);
+        sprintf(sendline, "| %-10s | %-10s | %-20s | %-10s | %-10s | %-10s | %-15s | \n", "ShowtimeId", "RoomId", "Cinema name", "Weekday", "StartTime", "EndTime", "NoOfEmptySeats");
+        log_send_msg(connfd, client_ip, client_port, sendline);
+        memset(sendline, 0, strlen(sendline));
+        send(connfd, "----------------------------------------------------------------------------------------------------------|\n", MAXLINE, 0);
+        for (int i = 0; i < showtimeList.size; i++)
+        {
+            struct ShowTime showtime = showtimeList.showTimes[i];
+            sprintf(sendline, "| %-10d | %-10d | %-20s | %-10s | %-10s | %-10s | %-15d |\n",
+                    showtime.showTimeId, showtime.roomId, showtime.cinema, showtime.weekday, showtime.startTime, showtime.endTime, showtime.noOfEmptySeats);
+            log_send_msg(connfd, client_ip, client_port, sendline);
+            memset(sendline, 0, MAXLINE);
+        }
+        send(connfd, "===========================================================================================================\n", MAXLINE, 0);
+        usleep(500000);
+        sprintf(sendline, "%s", END);
+        log_send_msg(connfd, client_ip, client_port, sendline);
+        memset(sendline, 0, strlen(sendline));
+
+        printf("[+]Send completely!\n");
+    }
+    freeShowTimeList(&showtimeList);
+}
+
+void getShowtimeInfo(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, int showTimeId, int movieId)
+{
+    string sql = "SELECT * FROM showtimes s JOIN cinemas c ON s.cinemaId=c.cinemaId JOIN movies m ON s.movieId=m.movieId WHERE showTimeId = " + to_string(showTimeId) + " AND s.movieId = " + to_string(movieId) + ";";
+    cout << "SQL query: " << sql << '\n';
+
+    struct ShowTimeList showtimeList;
+    initShowTimeList(&showtimeList);
+    char response[10];
+
+    (*mysqlOps).getListShowTimes(&showtimeList, sql);
+
+     if (!showtimeList.size)
+    {
+        response[0] = '0' + FAIL; // If no showtime matched, send FAIL to user
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
+        return;
+    }
+    else
+    {
+        printf("[+]Begin send response...\n");
+        response[0] = '0' + SUCCESS;
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
+        send(connfd, "-----------------------------------------------------------------|\n", MAXLINE, 0);
+        struct ShowTime showtime = showtimeList.showTimes[0];
+        char sendline[MAXLINE];
+        sprintf(sendline, "Showtime ID: %d\nMovie name: %s\nRoom: %d\nCinema: %s\nWeekday: %s\nStart Time: %s\nEnd Time: %s\nNo of Empty Seats: %d\n",
+                showtime.showTimeId, showtime.movieName, showtime.roomId, showtime.cinema, showtime.weekday, showtime.startTime, showtime.endTime, showtime.noOfEmptySeats);
+        log_send_msg(connfd, client_ip, client_port, sendline);
+        convertSeatMapToClient(connfd, client_ip, client_port, showtime.seatMap);
+        printf("[+]Send completely!\n");
+    }
+    freeShowTimeList(&showtimeList);
+}
+
+void reserveTicket(int connfd, string client_ip, int client_port, MySQLOperations *mysqlOps, int showTimeId, int noOfTickets, string tickets)
+{
+    string sql = "SELECT * FROM showtimes WHERE showTimeId = " + to_string(showTimeId) + ";";
+    cout << "SQL query: " << sql << '\n';
+
+    struct ShowTimeList showtimeList;
+    initShowTimeList(&showtimeList);
+    (*mysqlOps).getListShowTimes(&showtimeList, sql);
+
+    char response[10];
+      if (!showtimeList.size)
+    {
+        response[0] = '0' + FAIL;
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
+        return;
+    }
+    else
+    {
+        printf("[+]Begin send response...\n");
+        int result = FAIL;
+        string seatmap = showtimeList.showTimes[0].seatMap;
+        int noSeats = 0;
+        int noEmptys = showtimeList.showTimes[0].noOfEmptySeats;
+        string newSeatmap = convertClientFormToSeatMap(seatmap, tickets, &noSeats);
+        if (newSeatmap[0] != '-')
+        {
+            sql = "UPDATE showtimes SET seatMap = '" + newSeatmap + "', noOfEmptySeats=" + to_string(noEmptys - noSeats) + " WHERE showTimeId = " + to_string(showTimeId) + ";";
+            cout << "SQL query: " << sql << '\n';
+            result = (*mysqlOps).updateShowTimeSeatMap(showTimeId, sql);
+        }
+        char response[MAXLINE];
+        response[0] = '0' + result;
+        response[1] = '\0';
+        log_send_msg(connfd, client_ip, client_port, response);
+    }
+    freeShowTimeList(&showtimeList);
+}

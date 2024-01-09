@@ -17,12 +17,15 @@ int socketfd, loggedIn;
 void connectToServer(char *ip);
 void displayMenu();
 void displayUserMenu(string *username);
-int login (string *username);
+int login(string *username);
 void _register();
 void displayReceiveMessage(int *socketfd);
 void searchMovie();
 void browseMovie();
 void bookTicket();
+void reserve(int showtimeId, int movieId);
+bool isInteger(const string &s);
+bool isValidTicketFormat(string tickets);
 void logout();
 
 int main(int argc, char **argv)
@@ -50,7 +53,7 @@ void connectToServer(char *ip)
         perror("[-]Problem in creating the socket");
         exit(2);
     }
-    std::cout << "[+]Client Socket is created." << std::endl;
+    cout << "[+]Client Socket is created." << endl;
     // Creation of the socket
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
@@ -62,7 +65,7 @@ void connectToServer(char *ip)
         perror("[-]Problem in connecting to the server");
         exit(3);
     }
-    std::cout << "[+]Connected to Server." << std::endl;
+    cout << "[+]Connected to Server." << endl;
 }
 
 void displayMenu()
@@ -104,21 +107,21 @@ void displayMenu()
         }
         else
         {
-            //display menu coresponsing to each user mode
+            // display menu coresponsing to each user mode
             switch (loggedIn)
             {
-                case BUYER:
-                    displayUserMenu(&username);
-                    break;
-                case SALER:
-                    // Implement code here
-                    break;
-                case ADMIN:
-                    // Implement code here
-                    break;
-                default:
-                    printf("[-]Some error in get role of user!\n");
-                    exit(1);
+            case BUYER:
+                displayUserMenu(&username);
+                break;
+            case SALER:
+                // Implement code here
+                break;
+            case ADMIN:
+                // Implement code here
+                break;
+            default:
+                printf("[-]Some error in get role of user!\n");
+                exit(1);
             }
             printf("-----------------------------\n");
         }
@@ -146,7 +149,7 @@ void displayUserMenu(string *username)
         browseMovie();
         break;
     case '3':
-        //bookTicket();
+        bookTicket();
         break;
     case '4':
         logout();
@@ -170,23 +173,26 @@ void _register()
     // store values in sendline
     sprintf(sendline, "%d\n%s %s\n", REGISTER, username, password);
     // send request to server with protocol: "REGISTER\n<username> <password>\n"
-    send (socketfd, sendline, strlen(sendline), 0);
+    send(socketfd, sendline, strlen(sendline), 0);
 
     recv(socketfd, recvline, MAXLINE, 0);
     int auth = recvline[0] - '0';
-    if (auth == SUCCESS){
+    if (auth == SUCCESS)
+    {
         printf("Register successfully!\nNow you can login with this new account.\n");
     }
     else if (auth == FAIL)
     {
         printf("This username already existed!!!\n");
-    } else {
+    }
+    else
+    {
         perror(recvline);
         exit(4);
     }
 }
 
-int login (string *user)
+int login(string *user)
 {
     char username[30], password[30];
     // string username, password;
@@ -200,18 +206,21 @@ int login (string *user)
     // store values in sendline
     sprintf(sendline, "%d\n%s %s\n", LOGIN, username, password);
     // send request to server with protocol: "LOGIN\n<username> <password>\n"
-    send (socketfd, sendline, strlen(sendline), 0);
+    send(socketfd, sendline, strlen(sendline), 0);
 
     recv(socketfd, recvline, MAXLINE, 0);
     int auth = recvline[0] - '0';
-    if (auth == BUYER || auth == SALER || auth == ADMIN){
-        printf("You have logged in successfully with %s account!\n", (auth==BUYER?"buyer":(auth==SALER?"saler":"admin")));
+    if (auth == BUYER || auth == SALER || auth == ADMIN)
+    {
+        printf("You have logged in successfully with %s account!\n", (auth == BUYER ? "buyer" : (auth == SALER ? "saler" : "admin")));
         *user = username;
     }
     else if (auth == FAIL)
     {
         printf("Wrong username or password!!!\n");
-    } else {
+    }
+    else
+    {
         perror(recvline);
         exit(4);
     }
@@ -228,11 +237,15 @@ void displayReceiveMessage(int *socketfd)
 {
     char recvline[MAXLINE];
     int n;
-    while ((n = recv(*socketfd, recvline, MAXLINE, 0)) > 0) {
-        if (strcmp(recvline, "End")) {
+    while ((n = recv(*socketfd, recvline, MAXLINE, 0)) > 0)
+    {
+        if (strcmp(recvline, "End"))
+        {
             printf("%s", recvline);
             memset(recvline, 0, sizeof(recvline));
-        } else {
+        }
+        else
+        {
             memset(recvline, 0, sizeof(recvline));
             break;
         }
@@ -248,60 +261,323 @@ void searchMovie()
     cin >> title;
 
     sprintf(sendline, "%d\n%s\n", SEARCH, title);
-    send (socketfd, sendline, strlen(sendline), 0);
+    send(socketfd, sendline, strlen(sendline), 0);
 
-    displayReceiveMessage(&socketfd);
+    recv(socketfd, recvline, MAXLINE, 0);
+    int response = recvline[0] - '0';
+    if (response == SUCCESS)
+    {
+        displayReceiveMessage(&socketfd);
+    }
+    else if (response == FAIL)
+    {
+        printf("No movie matched!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
 }
 
 void browseMovie()
 {
     int n;
     char typeId[25], cinemaId[25], weekday[25], sendline[MAXLINE], recvline[MAXLINE];
-    
+
     // send request to get list of movie types
     sprintf(sendline, "%d\n", GET_LIST_TYPE);
-    send (socketfd, sendline, strlen(sendline), 0);
+    send(socketfd, sendline, strlen(sendline), 0);
     memset(sendline, 0, sizeof(sendline));
 
-    // display list of movie types
-    displayReceiveMessage(&socketfd);
+    recv(socketfd, recvline, MAXLINE, 0);
+    int response = recvline[0] - '0';
+    if (response == SUCCESS)
+    {
+        // display list of movie types
+        displayReceiveMessage(&socketfd);
+    }
+    else if (response == FAIL)
+    {
+        printf("No type found!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
 
     cout << "Which movie type do you want to browse?\nEnter a specific typeId or enter ALL to browse all type:\n";
     cin >> typeId;
-
+    for (int i = 0; i < strlen(typeId); ++i)
+    {
+        typeId[i] = toupper(typeId[i]);
+    }
     // send request to get list of cinemas
     sprintf(sendline, "%d\n", GET_LIST_CINEMA);
-    send (socketfd, sendline, strlen(sendline), 0);
+    send(socketfd, sendline, strlen(sendline), 0);
     memset(sendline, 0, sizeof(sendline));
 
-    // display list of cinemas
-    displayReceiveMessage(&socketfd);
+    recv(socketfd, recvline, MAXLINE, 0);
+    response = recvline[0] - '0';
+    if (response == SUCCESS)
+    {
+        // display list of cinemas
+        displayReceiveMessage(&socketfd);
+    }
+    else if (response == FAIL)
+    {
+        printf("No cinema found!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
 
     cout << "Which cinema do you want to browse?\nEnter a specific cinemaId or enter ALL to browse all cinemas:\n";
     cin >> cinemaId;
-    
+    for (int i = 0; i < strlen(cinemaId); ++i)
+    {
+        cinemaId[i] = toupper(cinemaId[i]);
+    }
     // display list of weekday
     cout << "What weekday do you want to browse movies?\nEnter the weekday (e.g., Monday, Tuesday) or ALL if you want to browse all days\n";
-    while (true) {
+    while (true)
+    {
         cin >> weekday;
         // Convert the input to lowercase for case-insensitive comparison
-        std::transform(std::begin(weekday), std::end(weekday) - 1, std::begin(weekday), [](unsigned char c) { return std::tolower(c); });
+        transform(begin(weekday), end(weekday) - 1, begin(weekday), [](unsigned char c)
+                  { return toupper(c); });
 
-        if (std::string(weekday) == "monday" || std::string(weekday) == "tuesday" || std::string(weekday) == "wednesday" ||
-            std::string(weekday) == "thursday" || std::string(weekday) == "friday" || std::string(weekday) == "saturday" ||
-            std::string(weekday) == "sunday" || std::string(weekday) == "all") {
-            weekday[0]-=32; // convert first character to uppercase
+        if (string(weekday) == "MONDAY" || string(weekday) == "TUESDAY" || string(weekday) == "WEDNESDAY" ||
+            string(weekday) == "THURSDAY" || string(weekday) == "FRIDAY" || string(weekday) == "SATURDAY" ||
+            string(weekday) == "SUNDAY" || string(weekday) == "ALL")
+        {
             break; // Input is valid, exit the loop
-        } else {
-            std::cout << "Invalid input. Please enter a valid weekday (e.g., Monday, Tuesday) or ALL\n";
+        }
+        else
+        {
+            cout << "Invalid input. Please enter a valid weekday (e.g., Monday, Tuesday) or ALL\n";
         }
     }
 
-
     // send request to browse movie by type, cinema, weekday
     sprintf(sendline, "%d\n%s %s %s", BROWSE, typeId, cinemaId, weekday);
-    send (socketfd, sendline, strlen(sendline), 0);
+    send(socketfd, sendline, strlen(sendline), 0);
 
-    // display list movies matched
-    displayReceiveMessage(&socketfd);
+    recv(socketfd, recvline, MAXLINE, 0);
+    response = recvline[0] - '0';
+    if (response == SUCCESS)
+    {
+        // display list movies matched
+        displayReceiveMessage(&socketfd);
+    }
+    else if (response == FAIL)
+    {
+        printf("No movie matched!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
+}
+
+bool isInteger(const string &s)
+{
+    if (s.empty() || ((!isdigit(s[0])) && (s[0] != '-') && (s[0] != '+')))
+        return false;
+
+    char *p;
+    strtol(s.c_str(), &p, 10);
+
+    return (*p == 0);
+}
+
+bool isValidTicketFormat(string tickets)
+{
+    istringstream iss(tickets);
+    string token;
+    while (iss >> token)
+    {
+        if (token.size() < 2 || !isalpha(token[0]) || !isdigit(token[1]) || token[0] < 'A' || token[0] > 'Z' || token[1] < '1' || token[1] > '9')
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+void reserve(int showtimeId, int movieId)
+{
+    char sendline[MAXLINE], recvline[MAXLINE];
+    int noTickets = -1;
+    // send request to detail info of showtime
+    sprintf(sendline, "%d\n%d %d\n", GET_SHOWTIME_INFO, showtimeId, movieId);
+    send(socketfd, sendline, strlen(sendline), 0);
+    memset(sendline, 0, sizeof(sendline));
+
+    recv(socketfd, recvline, MAXLINE, 0);
+    int response = (int)(recvline[0] - '0');
+    if (response == SUCCESS)
+    {
+        // display detail of showtime
+        displayReceiveMessage(&socketfd);
+    }
+    else if (response == FAIL)
+    {
+        printf("No showtime matched!\n");
+        return;
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
+
+    // get list of tickets that buyer want to reserve
+    while (true)
+    {
+        cout << "How many movie tickets do you want to reserve? (Enter 0 if you do not want to book ticket): ";
+        string noTicketsStr;
+        cin >> noTicketsStr;
+        if (isInteger(noTicketsStr))
+            noTickets = stoi(noTicketsStr);
+        if (noTickets >= 0)
+        {
+            break;
+            cin.ignore();
+        }
+        else
+        {
+            printf("Invalid number. The number of ticket must be non-negative! Please enter again\n");
+        }
+    }
+    int trick = 1;
+    if (noTickets > 0)
+    {
+        // Get list of tickets
+        while (true)
+        {
+            string tickets;
+            cout << "Enter the ticket IDs separated by space (Eg.: A1 B2 C3):\n";
+            if (trick)
+                cin.ignore(), trick--; // Clear input buffer
+            getline(cin, tickets);
+            if (!isValidTicketFormat(tickets))
+            {
+                printf("Invalid ticket format. Ticket IDs must be in the format [A-Z][1-9]. Example: A1 B2 C3\n");
+            }
+            else
+            {
+                // send request to reserve ticket by showtimeid, number of tickets, and list of ticket
+                sprintf(sendline, "%d\n%d %d %s", RESERVE, showtimeId, noTickets, tickets.c_str());
+                send(socketfd, sendline, strlen(sendline), 0);
+
+                recv(socketfd, recvline, MAXLINE, 0);
+                int response = recvline[0] - '0';
+                if (response == SUCCESS)
+                {
+                    printf("You have successfully booked ticket(s): %s\n", tickets.c_str());
+                }
+                else if (response == FAIL)
+                {
+                    printf("Ticket booking was not successful, maybe the seat was booked by someone else or you type something wrong. Please try again!!!\n");
+                    reserve(showtimeId, movieId); // Retry booking process
+                }
+                else
+                {
+                    perror(recvline);
+                    exit(4);
+                }
+                break;
+            }
+        }
+    }
+}
+
+void bookTicket()
+{
+    int n, movieId, showtimeId;
+    char sendline[MAXLINE], recvline[MAXLINE];
+
+    // send request to get list of movie
+    sprintf(sendline, "%d\n", GET_LIST_MOVIES);
+    send(socketfd, sendline, strlen(sendline), 0);
+    memset(sendline, 0, sizeof(sendline));
+
+    recv(socketfd, recvline, MAXLINE, 0);
+    int response = recvline[0] - '0';
+    if (response == SUCCESS)
+    {
+        // display list of movies
+        displayReceiveMessage(&socketfd);
+    }
+    else if (response == FAIL)
+    {
+        printf("No movie found!\n");
+        return;
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
+
+    while (true)
+    {
+        cout << "Which movie do you want to reserve?\nEnter a specific movieId:\n";
+        string movieIdStr;
+        cin >> movieIdStr;
+        if (isInteger(movieIdStr))
+        {
+            movieId = stoi(movieIdStr);
+
+            // send request to get list of showtime by movieId
+            sprintf(sendline, "%d\n%d\n", GET_LIST_SHOWTIME_BY_MOVIEID, movieId);
+            send(socketfd, sendline, strlen(sendline), 0);
+            memset(sendline, 0, sizeof(sendline));
+
+            recv(socketfd, recvline, MAXLINE, 0);
+            int response = recvline[0] - '0';
+            if (response == SUCCESS)
+            {
+                // display list of showtimes
+                displayReceiveMessage(&socketfd);
+            }
+            else if (response == FAIL)
+            {
+                printf("No showtime match with movieId = %d!\n", movieId);
+                return;
+            }
+            else
+            {
+                perror(recvline);
+                exit(4);
+            }
+
+            while (true)
+            {
+                cout << "Which showtime do you want to see?\nEnter a specific showtimeId:\n";
+                string showtimeIdStr;
+                cin >> showtimeIdStr;
+                if (isInteger(showtimeIdStr))
+                {
+                    int showtimeId = stoi(showtimeIdStr);
+                    reserve(showtimeId, movieId);
+                    break;
+                }
+                else
+                {
+                    printf("Invalid input. Please enter a valid number for the showtimeId\n");
+                }
+            }
+            break;
+        }
+        else
+        {
+            printf("Invalid input. Please enter a valid number for the movieId\n");
+        }
+    }
 }

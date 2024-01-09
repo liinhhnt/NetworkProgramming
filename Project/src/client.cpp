@@ -268,8 +268,22 @@ void searchMovie()
     sprintf(sendline, "%d\n%s\n", SEARCH, title);
     send(socketfd, sendline, strlen(sendline), 0);
 
-    int fail = 0;
-    displayReceiveMessage(&socketfd, &fail);
+    recv(socketfd, recvline, MAXLINE, 0);
+    int response = recvline[0] - '0';
+    if (response == SUCCESS)
+    {
+        int fail = 0;
+        displayReceiveMessage(&socketfd, &fail);
+    }
+    else if (response == FAIL)
+    {
+        printf("No movie matched!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
 }
 
 void browseMovie()
@@ -282,9 +296,23 @@ void browseMovie()
     send(socketfd, sendline, strlen(sendline), 0);
     memset(sendline, 0, sizeof(sendline));
 
-    // display list of movie types
-    int fail = 0;
-    displayReceiveMessage(&socketfd, &fail);
+    recv(socketfd, recvline, MAXLINE, 0);
+    int response = recvline[0] - '0';
+    if (response == SUCCESS)
+    {
+        // display list of movie types
+        int fail = 0;
+        displayReceiveMessage(&socketfd, &fail);
+    }
+    else if (response == FAIL)
+    {
+        printf("No type found!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
 
     cout << "Which movie type do you want to browse?\nEnter a specific typeId or enter ALL to browse all type:\n";
     cin >> typeId;
@@ -297,9 +325,26 @@ void browseMovie()
     send(socketfd, sendline, strlen(sendline), 0);
     memset(sendline, 0, sizeof(sendline));
 
-    // display list of cinemas
-    fail = 0;
-    displayReceiveMessage(&socketfd, &fail);
+    recv(socketfd, recvline, MAXLINE, 0);
+    response = recvline[0] - '0';
+    if (response == SUCCESS)
+    {
+        // display list of cinemas
+        int fail = 0;
+        displayReceiveMessage(&socketfd, &fail);
+    }
+    else if (response == FAIL)
+    {
+        printf("No cinema found!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
+    // // display list of cinemas
+    // fail = 0;
+    // displayReceiveMessage(&socketfd, &fail);
 
     cout << "Which cinema do you want to browse?\nEnter a specific cinemaId or enter ALL to browse all cinemas:\n";
     cin >> cinemaId;
@@ -332,9 +377,23 @@ void browseMovie()
     sprintf(sendline, "%d\n%s %s %s", BROWSE, typeId, cinemaId, weekday);
     send(socketfd, sendline, strlen(sendline), 0);
 
-    // display list movies matched
-    fail = 0;
-    displayReceiveMessage(&socketfd, &fail);
+    recv(socketfd, recvline, MAXLINE, 0);
+    response = recvline[0] - '0';
+    if (response == SUCCESS)
+    {
+        // display list movies matched
+        int fail = 0;
+        displayReceiveMessage(&socketfd, &fail);
+    }
+    else if (response == FAIL)
+    {
+        printf("No movie matched!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
 }
 
 bool isInteger(const string &s)
@@ -371,14 +430,32 @@ void reserve(int showtimeId, int movieId)
     send(socketfd, sendline, strlen(sendline), 0);
     memset(sendline, 0, sizeof(sendline));
 
-    // display detail of showtime
-    int fail = 0;
-    displayReceiveMessage(&socketfd, &fail);
-    if (fail == -1)
+    recv(socketfd, recvline, MAXLINE, 0);
+    int response = (int)(recvline[0] - '0');
+    if (response == SUCCESS)
     {
-        cout << "Invalid showtimeId\n";
+        // display detail of showtime
+        int fail = 0;
+        displayReceiveMessage(&socketfd, &fail);
+    }
+    else if (response == FAIL)
+    {
+        printf("No showtime matched!\n");
         return;
     }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
+
+    // int fail = 0;
+    // displayReceiveMessage(&socketfd, &fail);
+    // if (fail == -1)
+    // {
+    //     cout << "Invalid showtimeId\n";
+    //     return;
+    // }
 
     // get list of tickets that buyer want to reserve
     while (true)
@@ -420,12 +497,12 @@ void reserve(int showtimeId, int movieId)
                 send(socketfd, sendline, strlen(sendline), 0);
 
                 recv(socketfd, recvline, MAXLINE, 0);
-                int auth = recvline[0] - '0';
-                if (auth == SUCCESS)
+                int response = recvline[0] - '0';
+                if (response == SUCCESS)
                 {
                     printf("You have successfully booked ticket(s): %s\n", tickets.c_str());
                 }
-                else if (auth == FAIL)
+                else if (response == FAIL)
                 {
                     printf("Ticket booking was not successful, maybe the seat was booked by someone else or you type something wrong. Please try again!!!\n");
                     reserve(showtimeId, movieId); // Retry booking process
@@ -451,10 +528,28 @@ void bookTicket()
     send(socketfd, sendline, strlen(sendline), 0);
     memset(sendline, 0, sizeof(sendline));
 
-    // display list of movie
-    int fail = 0;
+    recv(socketfd, recvline, MAXLINE, 0);
+    int response = recvline[0] - '0';
+    if (response == SUCCESS)
+    {
+        // display list of movies
+        int fail = 0;
+        displayReceiveMessage(&socketfd, &fail);
+    }
+    else if (response == FAIL)
+    {
+        printf("No movie found!\n");
+        return;
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
 
-    displayReceiveMessage(&socketfd, &fail);
+    // // display list of movie
+    // int fail = 0;
+    // displayReceiveMessage(&socketfd, &fail);
 
     while (true)
     {
@@ -470,15 +565,34 @@ void bookTicket()
             send(socketfd, sendline, strlen(sendline), 0);
             memset(sendline, 0, sizeof(sendline));
 
-            // display list of showtimes by movieId
-            int fail = 0;
-
-            displayReceiveMessage(&socketfd, &fail);
-            if (fail)
+            recv(socketfd, recvline, MAXLINE, 0);
+            int response = recvline[0] - '0';
+            if (response == SUCCESS)
             {
-                cout << "Invalid movieId!\n";
+                // display list of showtimes
+                int fail = 0;
+                displayReceiveMessage(&socketfd, &fail);
+            }
+            else if (response == FAIL)
+            {
+                printf("No showtime match with movieId = %d!\n", movieId);
                 return;
-            };
+            }
+            else
+            {
+                perror(recvline);
+                exit(4);
+            }
+
+            // // display list of showtimes by movieId
+            // int fail = 0;
+
+            // displayReceiveMessage(&socketfd, &fail);
+            // if (fail)
+            // {
+            //     cout << "Invalid movieId!\n";
+            //     return;
+            // };
 
             while (true)
             {

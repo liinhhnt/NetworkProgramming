@@ -16,8 +16,11 @@ int socketfd, loggedIn;
 
 void connectToServer(char *ip);
 void displayMenu();
+void displayAdminMenu(string *username);
 void displayUserMenu(string *username);
-int login(string *username);
+void displaySalerMenu(string *username);
+int login (string *username);
+void createUser();
 void _register();
 void displayReceiveMessage(int *socketfd);
 void searchMovie();
@@ -27,6 +30,15 @@ void reserve(int showtimeId, int movieId);
 bool isInteger(const string &s);
 bool isValidTicketFormat(string tickets);
 void logout();
+void addMovie();
+void addShowTimes();
+vector<std::string> receiveMovieType(int *socketfd);
+bool isTypeInList(vector<std::string> movieslist, string typeId);
+void addNewMovieType();
+void getListMovie();
+void getListCinema();
+void getListRoom();
+void getListType();
 
 int main(int argc, char **argv)
 {
@@ -114,10 +126,10 @@ void displayMenu()
                 displayUserMenu(&username);
                 break;
             case SALER:
-                // Implement code here
+                displaySalerMenu(&username);
                 break;
             case ADMIN:
-                // Implement code here
+                displayAdminMenu(&username);
                 break;
             default:
                 printf("[-]Some error in get role of user!\n");
@@ -125,6 +137,30 @@ void displayMenu()
             }
             printf("-----------------------------\n");
         }
+    }
+}
+
+void displayAdminMenu(string *username)
+{
+    cout << "Welcome admin: " << *username << "\n What do you want to do?\n";
+    printf("1. Create user account\n");
+    printf("2. Logout\n");
+    printf("Enter your choice: ");
+
+    string choice;
+    cin >> choice;
+
+    switch (choice[0])
+    {
+    case '1':
+        createUser();
+        break;
+    case '2':
+        logout();
+        break;
+    default:
+        printf("Invalid choice. Try again.\n");
+        break;
     }
 }
 
@@ -157,6 +193,90 @@ void displayUserMenu(string *username)
     default:
         printf("Invalid choice. Try again.\n");
         break;
+    }
+}
+
+void displaySalerMenu(string *username)
+{
+    cout << "Hello: " << *username << "\n What do you want to do?\n";
+    printf("1. Add new movie\n");
+    printf("2. Announce movie showings\n");
+    printf("3. Modify screening information\n");
+    printf("4. Logout\n");
+    printf("Enter your choice: ");
+
+    string choice;
+    cin >> choice;
+
+    switch (choice[0])
+    {
+    case '1':
+        addMovie();
+        break;
+    case '2':
+        addShowTimes();
+        break;
+    case '3':
+        //bookTicket();
+        break;
+    case '4':
+        logout();
+        break;
+    default:
+        printf("Invalid choice. Try again.\n");
+        break;
+    }
+}
+
+void createUser()
+{
+    char username[30], password[30], role[30];
+    char sendline[MAXLINE], recvline[MAXLINE];
+    string choice;
+
+    cout << "\nCreate new user account...\n";
+    cout << "Enter username: ";
+    cin >> username;
+    cout << "Enter password: ";
+    cin >> password;
+
+    do {
+        cout << "Choose role for account (1.buyer, 2.saler, 3.admin): ";
+        cin >> choice;
+        switch (choice[0]) {
+            case '1':
+                strcpy(role, "buyer");
+                break;
+            case '2':
+                strcpy(role, "saler");
+                break;
+            case '3':
+                strcpy(role, "admin");
+                break;
+            default:
+                cout << "Invalid choice! Try again!!\n";    
+        }
+    } while (choice != "1" && choice != "2" && choice != "3");
+
+    // store values in sendline
+    sprintf(sendline, "%d\n%s %s %s\n", CREATE_USER, username, password, role);
+    // send request to server with protocol: "CREATE_USER\n<username> <password> <role>\n"
+    send(socketfd, sendline, strlen(sendline), 0);
+
+    recv(socketfd, recvline, MAXLINE, 0);
+    int auth = recvline[0] - '0';
+    if (auth == SUCCESS)
+    {
+        printf("Create new account successfully!\n");
+    }
+    else if (auth == FAIL)
+    {
+        printf("Create account fail! This account already existed!!!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
     }
 }
 
@@ -250,6 +370,24 @@ void displayReceiveMessage(int *socketfd)
             break;
         }
     }
+}
+
+vector<std::string> receiveMovieType(int *socketfd)
+{
+    char recvline[MAXLINE];
+    vector<std::string> movieType;
+    int n;
+    while ((n = recv(*socketfd, recvline, MAXLINE, 0)) > 0) {
+        if (strcmp(recvline, "End")) {
+            printf("%s", recvline);
+            movieType.push_back(std::string(recvline));
+            memset(recvline, 0, sizeof(recvline));
+        } else {
+            memset(recvline, 0, sizeof(recvline));
+            break;
+        }
+    }
+    return movieType;
 }
 
 void searchMovie()
@@ -579,5 +717,244 @@ void bookTicket()
         {
             printf("Invalid input. Please enter a valid number for the movieId\n");
         }
+    }
+}
+
+void addNewMovieType(){
+    char typeName[50] ;
+    char sendline[MAXLINE], recvline[MAXLINE];
+    cout << "Enter Movie Type name: ";
+    cin >> typeName;
+    // store values in sendline
+    sprintf(sendline, "%d\n%s\n", ADD_MOVIE_TYPE, typeName);
+    send(socketfd, sendline, strlen(sendline), 0);
+
+    recv(socketfd, recvline, MAXLINE, 0);
+    int auth = recvline[0] - '0';
+    if (auth == SUCCESS)
+    {
+        printf("Add new movie type successfully!\n");
+    }
+    else if (auth == FAIL)
+    {
+        printf("Add new movie type fail! This movie type already existed!!!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
+}
+
+void addMovie()
+{
+    char movieName[50];
+    char sendline[MAXLINE], recvline[MAXLINE];
+    string choice;
+    char typeId[2], duration[30], description[30], role[30];
+    cout << "\nAdd new movie...\n";
+    cout << "Enter movie name: ";
+    // cin >> movieName;
+    cin.ignore();  // Ignore any previous newline character
+    cin.getline(movieName, sizeof(movieName));
+
+    sprintf(sendline, "%d\n", GET_LIST_TYPE);
+    send (socketfd, sendline, strlen(sendline), 0);
+    memset(sendline, 0, sizeof(sendline));
+    vector<std::string> typeslist = receiveMovieType(&socketfd);
+    while(true){
+        cout << "Enter typeId: ";
+        cin >> typeId;
+        if(!isTypeInList(typeslist, typeId)){
+            char c;
+            cout << "TypeId is not in existing list. Do you want to add a new movie type?";
+            cout << "Press y/n: ";
+            cin >>c;
+            if(c=='y'){
+                addNewMovieType();
+                break;
+            }
+        }
+        else{
+            break;
+        }
+    }
+    
+    cout << "Enter duration (HH:mm): ";
+    cin >> duration;
+    cout << "Enter description: ";
+    cin >> description;
+    // store values in sendline
+    sprintf(sendline, "%d\n%s %s %s %s\n", ADD_MOVIE, movieName, typeId, duration, description);
+    send(socketfd, sendline, strlen(sendline), 0);
+
+    recv(socketfd, recvline, MAXLINE, 0);
+    int auth = recvline[0] - '0';
+    if (auth == SUCCESS)
+    {
+        printf("Add new movie successfully!\n");
+    }
+    else if (auth == FAIL)
+    {
+        printf("Add new movie fail! This movie already existed!!!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
+}
+
+bool isTypeInList(vector<std::string> movieslist, string typeId){
+    for (string i: movieslist){
+        if (i.find(typeId) != string::npos)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+void addShowTimes()
+{
+    char movieId[2], cinemaId[2], roomId[2], weekday[10], startTime[6], endTime[6] ;
+    char sendline[MAXLINE], recvline[MAXLINE];
+    string choice;
+    cout << "\nAnnounce movie showings...\n";
+    getListMovie();
+    cin.clear();
+    cout << "Enter movieId: ";
+    cin >> movieId;
+    getListCinema();
+    cin.clear();
+    cout << "Enter cinemaId: ";
+    cin >> cinemaId;
+    for (int i = 0; i < strlen(cinemaId); ++i)
+    {
+        cinemaId[i] = toupper(cinemaId[i]);
+    }
+    getListRoom();
+    cout << "Enter roomId: ";
+    cin >> roomId;
+    cout << "Enter weekday (e.g., Mon, Tue, Wed, Thu, Fri, Sat, Sun): ";
+    cin >> weekday;
+    cout << "Enter start time (HH:mm): ";
+    cin >> startTime;
+    cout << "Enter end time (HH:mm): ";
+    cin >> endTime;
+    // store values in sendline
+    sprintf(sendline, "%d\n%s %s %s %s %s %s\n", ADD_SHOW_TIMES, weekday, startTime, endTime, movieId, cinemaId, roomId);
+    send(socketfd, sendline, strlen(sendline), 0);
+
+    recv(socketfd, recvline, MAXLINE, 0);
+    int auth = recvline[0] - '0';
+    if (auth == SUCCESS)
+    {
+        printf("Announce movie showings successfully!\n");
+    }
+    else if (auth == FAIL)
+    {
+        printf("Announce movie showings fail! This movie showings already existed!!!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
+}
+
+void getListMovie()
+{
+    int n;
+    char sendline[MAXLINE], recvline[MAXLINE];
+    
+    // send request to get list of movie 
+    sprintf(sendline, "%d\n", GET_LIST_MOVIES);
+    send (socketfd, sendline, strlen(sendline), 0);
+    memset(sendline, 0, sizeof(sendline));
+
+    // display list of movie 
+    displayReceiveMessage(&socketfd);
+}
+void getListCinema()
+{
+    int n;
+    char sendline[MAXLINE], recvline[MAXLINE];
+    
+    // send request to get list of cinema
+    sprintf(sendline, "%d\n", GET_LIST_CINEMA);
+    send (socketfd, sendline, strlen(sendline), 0);
+    memset(sendline, 0, sizeof(sendline));
+
+    recv(socketfd, recvline, MAXLINE, 0);
+    int response = recvline[0] - '0';
+    if (response == SUCCESS)
+    {
+        // display list of cinema
+        displayReceiveMessage(&socketfd);
+    }
+    else if (response == FAIL)
+    {
+        printf("No cinema found!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
+}
+
+void getListRoom()
+{
+    int n;
+    char sendline[MAXLINE], recvline[MAXLINE];
+    
+    // send request to get list of cinema
+    sprintf(sendline, "%d\n", GET_LIST_ROOMS_OF_CINEMA);
+    send (socketfd, sendline, strlen(sendline), 0);
+    memset(sendline, 0, sizeof(sendline));
+
+    recv(socketfd, recvline, MAXLINE, 0);
+    int response = recvline[0] - '0';
+    if (response == SUCCESS)
+    {
+        // display list of room
+        displayReceiveMessage(&socketfd);
+    }
+    else if (response == FAIL)
+    {
+        printf("No room found!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
+    }
+}
+
+void getListType()
+{
+    int n;
+    char sendline[MAXLINE], recvline[MAXLINE];
+    
+    // send request to get list of movie types
+    sprintf(sendline, "%d\n", GET_LIST_TYPE);
+    send(socketfd, sendline, strlen(sendline), 0);
+    memset(sendline, 0, sizeof(sendline));
+
+    recv(socketfd, recvline, MAXLINE, 0);
+    int response = recvline[0] - '0';
+    if (response == SUCCESS)
+    {
+        // display list of movie types
+        displayReceiveMessage(&socketfd);
+    }
+    else if (response == FAIL)
+    {
+        printf("No type found!\n");
+    }
+    else
+    {
+        perror(recvline);
+        exit(4);
     }
 }

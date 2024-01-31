@@ -4,8 +4,8 @@
 // Replace these fields to match with your database
 const char * database = "ticketBooking";
 const char * username = "root";
-const char * password = "123";
-const char * ipAddress = "tcp://127.0.0.1:3308";
+const char * password = "ntmn12345";
+const char * ipAddress = "tcp://127.0.0.1:3306";
 
 enum UserActions {
     REGISTER = 1,
@@ -23,6 +23,9 @@ enum UserActions {
     CREATE_USER = 13,
     GET_LIST_TYPE = 14,
     GET_SHOWTIME_INFO = 15,
+    ADD_SHOW_TIMES = 16,
+    ADD_MOVIE_TYPE = 17,
+    // GET_LIST_MOVIES = 18,
 };
 
 enum AuthCode {

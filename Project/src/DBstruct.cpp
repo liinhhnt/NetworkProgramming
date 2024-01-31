@@ -14,6 +14,17 @@ void freeTypeList (struct TypeList *typeList) {
   typeList->size = 0;
 }
 
+void initRoomList (struct RoomList* roomList) {
+  roomList->rooms = NULL;
+  roomList->size = 0;
+}
+
+void freeRoomList (struct RoomList *roomList) {
+  if (roomList->rooms != NULL) {
+    free(roomList->rooms);
+  }
+  roomList->size = 0;
+}
 
 void initShowTimeList (struct ShowTimeList* showtimeList) {
   showtimeList->showTimes = NULL;

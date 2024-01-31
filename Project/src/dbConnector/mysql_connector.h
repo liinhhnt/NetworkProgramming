@@ -26,6 +26,7 @@ public:
     int checkRoleUser(const string& countQuery);
     void getListMovies(struct MovieList *movieList, const string& query);
     void getListTypes(struct TypeList *typeList, const string& query);
+    void getListRooms(struct RoomList *roomList, const string& query);
     void getListCinemas(struct CinemaList *cinemaList, const string& query);
     void getListShowTimes(struct ShowTimeList *showTimeList, const std::string& query);
     int updateShowTimeSeatMap(int showTimeId, const std::string &query);

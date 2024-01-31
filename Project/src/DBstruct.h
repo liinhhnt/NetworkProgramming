@@ -18,7 +18,7 @@ struct Movie {
   char movieName[255];
   char typeName[255];
   char duration[10];
-  char describtion[100];
+  char description[255];
 };
 
 struct MovieList {
@@ -50,6 +50,20 @@ struct ShowTimeList {
 
 void initShowTimeList (struct ShowTimeList* showTimeList);
 void freeShowTimeList (struct ShowTimeList* ShowTimeList);
+
+struct Room {
+  int roomId;
+  int cinemaId;
+  int noOfSeats;
+};
+
+struct RoomList {
+  struct Room *rooms;
+  int size;
+};
+
+void initRoomList (struct RoomList* RoomList);
+void freeRoomList (struct RoomList* RoomList);
 
 struct Cinema {
   int cinemaId;

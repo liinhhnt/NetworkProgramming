@@ -118,8 +118,8 @@ void MySQLOperations::getListMovies(struct MovieList *movieList, const string &q
             movieList->movies[movieListSize].typeName[sizeof(movieList->movies[movieListSize].typeName) - 1] = '\0';
             strncpy(movieList->movies[movieListSize].duration, res->getString("duration").c_str(), sizeof(movieList->movies[movieListSize].duration) - 1);
             movieList->movies[movieListSize].duration[sizeof(movieList->movies[movieListSize].duration) - 1] = '\0';
-            strncpy(movieList->movies[movieListSize].describtion, res->getString("description").c_str(), sizeof(movieList->movies[movieListSize].describtion) - 1);
-            movieList->movies[movieListSize].describtion[sizeof(movieList->movies[movieListSize].describtion) - 1] = '\0';
+            strncpy(movieList->movies[movieListSize].description, res->getString("description").c_str(), sizeof(movieList->movies[movieListSize].description) - 1);
+            movieList->movies[movieListSize].description[sizeof(movieList->movies[movieListSize].description) - 1] = '\0';
             movieList->size = ++movieListSize;
         }
         delete res;
@@ -209,6 +209,32 @@ int getNullableInt(sql::ResultSet *res, const std::string &columnName, int defau
     else
     {
         return defaultValue;
+    }
+}
+
+void MySQLOperations::getListRooms(struct RoomList *roomList, const string& query)
+{
+    try {
+        sql::ResultSet *res = stmt->executeQuery(query);
+        int roomListSize = roomList->size;
+        while (res->next()) {
+            if (roomList->rooms == NULL) {
+                roomList->rooms = (struct Room*)malloc(sizeof(struct Room));
+            } else {
+                roomList->rooms = (struct Room*)realloc(roomList->rooms, (roomListSize + 1) * sizeof(struct Room));
+            }
+            if (roomList->rooms == NULL) {
+                fprintf(stderr, "Memory allocation failed.\n");
+                exit(1);
+            }
+            roomList->rooms[roomListSize].roomId = res->getInt("roomId");
+            roomList->rooms[roomListSize].cinemaId = res->getInt("cinemaId");
+            roomList->rooms[roomListSize].noOfSeats = res->getInt("noOfSeats");
+            roomList->size = ++roomListSize;
+        }
+        delete res;
+    } catch (SQLException &e) {
+        cerr << "Error selecting records: " << e.what() << endl;
     }
 }
 
